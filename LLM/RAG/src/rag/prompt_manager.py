@@ -4,26 +4,36 @@ Prompt management module for the LLM service.
 This module handles all aspects of prompt formatting, validation, and management.
 """
 
-from typing import Dict, Optional
-from .config import PROMPT_TEMPLATES, MODEL_CONFIG
+from typing import Dict, Optional, List
+from .config import PROMPT_TEMPLATES, MODEL_CONFIG, SYSTEM_PROMPTS, get_system_prompt
 
 class PromptManager:
     """Manages prompt formatting and validation for different models."""
 
     @staticmethod
-    def format_prompt(query: str, model_name: str) -> str:
+    def format_prompt(query: str, context: List[str], model_name: str) -> str:
         """
         Format a query according to the model's requirements.
 
         Args:
             query: The raw user query
+            context: List of context strings from the RAG system
             model_name: Name of the model to format for
 
         Returns:
             Formatted prompt string
         """
         template = PromptManager._get_template(model_name)
-        return template.format(query=query)
+        system_prompt = get_system_prompt(model_name)
+
+        # Combine context into a single string
+        context_str = "\n".join(context) if context else "No relevant context found."
+
+        return template.format(
+            query=query,
+            context=context_str,
+            system_prompt=system_prompt
+        )
 
     @staticmethod
     def _get_template(model_name: str) -> str:

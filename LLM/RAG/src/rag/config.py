@@ -28,11 +28,49 @@ def validate_parameters(temperature: float, max_tokens: int, top_k: int) -> None
     if top_k <= 0:
         raise ValueError("top_k must be positive")
 
+# System prompts for different models
+SYSTEM_PROMPTS = {
+    "flan-t5": "You are an assistant that answers questions based only on the provided context. Do not use any external knowledge. If the answer cannot be found in the context, say \"Not found in context.\"",
+    "instruct": "You are an assistant that answers questions based only on the provided context. Do not use any external knowledge. If the answer cannot be found in the context, say \"Not found in context.\" Always cite your sources when possible.",
+    "default": "You are an assistant that answers questions based only on the provided context. Do not use any external knowledge. If the answer cannot be found in the context, say \"Not found in context.\""
+}
+
 # Model-specific prompt templates
 PROMPT_TEMPLATES = {
-    "flan-t5": "Question: {query}\nAnswer:",
-    "instruct": "<s>[INST] {query} [/INST]",
-    "default": "{query}"
+    "flan-t5": """Instruction: Using only the information in the context provided, respond to the question below.
+Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
+
+Context:
+{context}
+
+Question:
+{query}
+
+Answer:""",
+
+    "instruct": """<s>[INST] <<SYS>>
+{system_prompt}
+<</SYS>>
+
+Instruction: Using only the information in the context provided, respond to the question below.
+Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
+
+Context:
+{context}
+
+Question:
+{query} [/INST]""",
+
+    "default": """Instruction: Using only the information in the context provided, respond to the question below.
+Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
+
+Context:
+{context}
+
+Question:
+{query}
+
+Answer:"""
 }
 
 def get_prompt_template(model_name: str) -> str:
@@ -42,3 +80,11 @@ def get_prompt_template(model_name: str) -> str:
     elif "flan" in model_name.lower() or "t5" in model_name.lower():
         return PROMPT_TEMPLATES["flan-t5"]
     return PROMPT_TEMPLATES["default"]
+
+def get_system_prompt(model_name: str) -> str:
+    """Get the appropriate system prompt for a model."""
+    if "instruct" in model_name.lower():
+        return SYSTEM_PROMPTS["instruct"]
+    elif "flan" in model_name.lower() or "t5" in model_name.lower():
+        return SYSTEM_PROMPTS["flan-t5"]
+    return SYSTEM_PROMPTS["default"]

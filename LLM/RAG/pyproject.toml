@@ -32,8 +32,6 @@ dependencies = [
     "bitsandbytes>=0.41.0",
     "huggingface-hub>=0.20.0",
     "psycopg2-binary>=2.9.9",
-    "python-dotenv>=1.0.0",
-    "langchain-community>=0.0.13",
     "sentencepiece>=0.2.0"
 ]
 
@@ -56,6 +54,7 @@ sentence-transformers = "^2.2.2"
 scikit-learn = "^1.4.0"
 prometheus-client = "^0.19.0"
 sentencepiece = "^0.2.0"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"

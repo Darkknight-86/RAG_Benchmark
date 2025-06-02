@@ -1,110 +1,216 @@
-# Plug-and-Play Model Switching for the LLM Service
+# Model Switching in RAG System
 
-This short guide explains **how to change the Hugging Face model** that the
-`llm` micro-service loads at runtime, without touching any other
-micro-services in the RAG stack.
+This document outlines the model switching capabilities and configuration in our RAG system.
 
----
+## Supported Models
 
-## 1. Quick Start — one-liner
+The system currently supports the following model types:
 
-Set an environment variable and restart the container:
+1. **FLAN-T5 Models**
+   - `google/flan-t5-small`
+   - `google/flan-t5-base`
+   - `google/flan-t5-large`
 
+2. **Instruct Models**
+   - `google/flan-t5-instruct`
+   - `google/flan-t5-instruct-large`
+
+## Environment Variables
+
+### Required Variables
 ```bash
-# choose any public Hugging Face repo ID
-export DEFAULT_LLM_MODEL=google/flan-t5-large
+# Model Configuration
+DEFAULT_LLM_MODEL=google/flan-t5-small  # Default model to use
+DEFAULT_TEMPERATURE=0.7                  # Model temperature (0.0 to 1.0)
+DEFAULT_MAX_TOKENS=200                   # Maximum tokens for generation
+DEFAULT_TOP_K=5                          # Top-k sampling parameter
 
-# rebuild only if you want the layer cached, otherwise just restart
-docker compose up -d --no-deps --build llm
+# API Keys (if using gated models)
+HUGGINGFACE_API_KEY=your_api_key_here    # Required for gated models
 ```
 
-The service looks for the variable in `LLMManager`:
-
-```python
-self.default_model = os.getenv("DEFAULT_LLM_MODEL", "google/flan-t5-large")
-```
-
-If the env-var is unset, it falls back to the baked-in default.
-
----
-
-## 2. Permanent change via `docker-compose.yml`
-
-```yaml
-services:
-  llm:
-    build:
-      context: .
-      dockerfile: LLM/RAG/Dockerfile
-    environment:
-      - DEFAULT_LLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
-```
-
-Re-create the container:
-
+### Optional Variables
 ```bash
-docker compose up -d --no-deps llm
+# Model-specific configurations
+SUPPORTED_MODELS=google/flan-t5-small,google/flan-t5-base,google/flan-t5-large  # Comma-separated list of supported models
 ```
 
----
+## Model Configuration
 
-## 3. Supported model types
+The model configuration is managed through the `config.py` file, which includes:
 
-| Family                 | HF repo example                                   | Notes                                  |
-|------------------------|----------------------------------------------------|----------------------------------------|
-| Flan-T5                | `google/flan-t5-large`                             | Seq2Seq; good zero-shot QA            |
-| Mistral-7B-Instruct    | `mistralai/Mistral-7B-Instruct-v0.2`               | Causal LM; add `[INST]` wrappers      |
-| Llama-3-8B-Instruct    | `meta-llama/Meta-Llama-3-8B-Instruct`              | License acceptance required            |
-| Any GGUF quantised     | `TheBloke/Mistral-7B-Instruct-v0.2-GGUF`           | Use llama-cpp loader instead (TODO)    |
+1. **Default Parameters**:
+   ```python
+   MODEL_CONFIG = {
+       "default_model": os.getenv("DEFAULT_LLM_MODEL", "google/flan-t5-small"),
+       "default_temperature": float(os.getenv("DEFAULT_TEMPERATURE", "0.7")),
+       "default_max_tokens": int(os.getenv("DEFAULT_MAX_TOKENS", "200")),
+       "default_top_k": int(os.getenv("DEFAULT_TOP_K", "5")),
+       "supported_models": os.getenv("SUPPORTED_MODELS", "google/flan-t5-small,google/flan-t5-base,google/flan-t5-large").split(",")
+   }
+   ```
 
-The loader first tries `AutoModelForCausalLM`; if that fails it falls
-back to `AutoModelForSeq2SeqLM`, so most encoder-decoder checkpoints
-(e.g. Flan-T5) still work.
+2. **Parameter Validation**:
+   ```python
+   def validate_parameters(temperature: float, max_tokens: int, top_k: int) -> None:
+       if not 0 <= temperature <= 1:
+           raise ValueError("Temperature must be between 0 and 1")
+       if max_tokens <= 0:
+           raise ValueError("max_tokens must be positive")
+       if top_k <= 0:
+           raise ValueError("top_k must be positive")
+   ```
 
----
+## Model-Specific Prompts
 
-## 4. Memory & speed cheat-sheet (FP16)
+The system uses different prompt templates based on the model type:
 
+1. **FLAN-T5 Models**:
+   ```python
+   PROMPT_TEMPLATES["flan-t5"] = """
+   Instruction: Using only the information in the context provided, respond to the question below.
+   Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
+
+   Context:
+   {context}
+
+   Question:
+   {query}
+
+   Answer:"""
+   ```
+
+2. **Instruct Models**:
+   ```python
+   PROMPT_TEMPLATES["instruct"] = """
+   <s>[INST] <<SYS>>
+   {system_prompt}
+   <</SYS>>
+
+   Instruction: Using only the information in the context provided, respond to the question below.
+   Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
+
+   Context:
+   {context}
+
+   Question:
+   {query} [/INST]"""
+   ```
+
+## Switching Models
+
+### Via Environment Variables
+
+1. **Temporary Switch**:
+   ```bash
+   # Set for current session
+   export DEFAULT_LLM_MODEL=google/flan-t5-base
+   ```
+
+2. **Permanent Switch**:
+   ```bash
+   # Add to .env file
+   echo "DEFAULT_LLM_MODEL=google/flan-t5-base" >> .env
+   ```
+
+### Via Docker
+
+1. **Using docker-compose**:
+   ```yaml
+   services:
+     llm-service:
+       environment:
+         - DEFAULT_LLM_MODEL=google/flan-t5-base
+         - DEFAULT_TEMPERATURE=0.7
+         - DEFAULT_MAX_TOKENS=200
+         - DEFAULT_TOP_K=5
+   ```
+
+2. **Using docker run**:
+   ```bash
+   docker run -e DEFAULT_LLM_MODEL=google/flan-t5-base \
+              -e DEFAULT_TEMPERATURE=0.7 \
+              -e DEFAULT_MAX_TOKENS=200 \
+              -e DEFAULT_TOP_K=5 \
+              llm-service
+   ```
+
+## Best Practices
+
+1. **Model Selection**:
+   - Use smaller models (e.g., `flan-t5-small`) for development and testing
+   - Use larger models (e.g., `flan-t5-large`) for production when quality is critical
+   - Consider using instruct models for more complex tasks
+
+2. **Parameter Tuning**:
+   - Start with default parameters
+   - Adjust temperature based on response variability needs
+   - Monitor token usage and adjust max_tokens accordingly
+   - Use top_k to control response diversity
+
+3. **Model Comparison**:
 | Model              | Params | VRAM | First-query latency |
 |--------------------|--------|------|--------------------|
+| flan-t5-small      | 0.08 B | 1 GB | ~0.2 s             |
 | flan-t5-base       | 0.25 B | 2 GB | ~0.4 s             |
 | flan-t5-large      | 0.78 B | 8 GB | ~0.9 s             |
 | mistral-7B-inst    | 7.0 B  | 13 GB| ~1.8 s             |
 | llama-3-8B-inst    | 8.0 B  | 14 GB| ~2.0 s             |
 
-_To fit larger models on 8 GB cards use 8-bit or 4-bit loading:_
+4. **Resource Management**:
+   - Monitor memory usage when switching to larger models
+   - Consider model size when deploying to resource-constrained environments
+   - Use appropriate batch sizes for your hardware
 
-```python
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_NAME,
-    load_in_8bit=True,
-    device_map="auto"
-)
-```
+5. **Error Handling**:
+   - Implement fallback to default model if specified model fails to load
+   - Validate model parameters before initialization
+   - Log model switching events for monitoring
 
----
+## Troubleshooting
 
-## 5. Prompt wrapping rules
+1. **Model Loading Issues**:
+   ```bash
+   # Check model availability
+   curl -H "Authorization: Bearer $HUGGINGFACE_API_KEY" \
+        https://huggingface.co/api/models/google/flan-t5-small
+   ```
 
-The LLM manager auto-detects "Instruct" models and wraps the prompt:
+2. **Memory Issues**:
+   ```bash
+   # Monitor container memory usage
+   docker stats llm-service
+   ```
 
-```python
-if "instruct" in model_name.lower():
-    prompt = f"<s>[INST] {prompt} [/INST]"
-```
+3. **Performance Issues**:
+   ```bash
+   # Check model inference time
+   docker logs llm-service | grep "inference_time"
+   ```
 
-For other models (Flan-T5, GPT-J, etc.) no wrapper is applied—provide an
-instructional prompt directly.
+## Monitoring
 
----
+1. **Model Metrics**:
+   - Inference time
+   - Memory usage
+   - Token usage
+   - Response quality
 
-## 6. Cache location
+2. **System Metrics**:
+   - CPU utilization
+   - Memory utilization
+   - GPU utilization (if applicable)
+   - Network I/O
 
-Downloaded weights are stored in the container layer under
-`~/.cache/huggingface/hub`.  Rebuild once to bake them into the image; later
-restarts are instant.
+## Future Improvements
 
----
+1. **Planned Features**:
+   - Dynamic model switching based on load
+   - Automatic model fallback
+   - Model performance analytics
+   - A/B testing support
 
-Feel free to extend this doc when you add new loaders (e.g. llama-cpp
-for GGUF, vLLM, TensorRT-LLM).
+2. **Potential Models**:
+   - GPT-2 variants
+   - BERT variants
+   - Custom fine-tuned models
