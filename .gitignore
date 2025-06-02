@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+.venv/
+env/
+venv/
+
+# Environment Variables
+.env
+
+# Poetry
+poetry.lock
+
+# Data Files
+*.csv
+
+# PDF and Text Files
+*.pdf
+RAG/arxiv_pdfs/
+RAG/arxiv_texts/
+
+# macOS
+*.DS_Store
+
+# Docker
+*.log
+docker-compose.override.yml
+
+# Protobuf Generated Files
+*.pb2.py
+*_pb2.py
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDEs and Editors
+.vscode/
+.idea/

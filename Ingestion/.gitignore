@@ -1,0 +1,18 @@
+poetry.lock
+
+# if you choose to place the CSV news database in your working directory...
+*.csv
+.env
+
+RAG/arxiv_pdfs
+RAG/arxiv_texts
+*.DS_Store
+*.pdf
+
+venv
+
+*_pb2.py
+*_pb2_grpc.py
+*_pb2.pyi
+*_pb2_grpc.py
+__pycache__

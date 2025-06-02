@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package rag;
+
+// Service definition for the RAG API Gateway
+service RAGService {
+  // Data ingestion pipeline
+  rpc IngestDocuments(IngestRequest) returns (IngestResponse) {}
+
+  // Query pipeline
+  rpc Query(QueryRequest) returns (QueryResponse) {}
+
+  // Benchmark pipeline
+  rpc Benchmark(BenchmarkRequest) returns (BenchmarkResponse) {}
+}
+
+// Ingest pipeline messages
+message IngestRequest {
+  repeated string document_urls = 1;
+  ProcessingOptions processing_options = 2;
+}
+
+message ProcessingOptions {
+  int32 chunk_size = 1;
+  string chunk_strategy = 2;
+  map<string, string> additional_options = 3;
+}
+
+message IngestResponse {
+  string job_id = 1;
+  int32 vectors_created = 2;
+  string status = 3;
+}
+
+// Query pipeline messages
+message QueryRequest {
+  string query = 1;
+  RetrievalOptions retrieval_options = 2;
+  LLMOptions llm_options = 3;
+}
+
+message RetrievalOptions {
+  int32 top_k = 1;
+  float similarity_threshold = 2;
+  map<string, string> additional_options = 3;
+}
+
+message LLMOptions {
+  string model = 1;
+  float temperature = 2;
+  int32 max_tokens = 3;
+  map<string, string> additional_options = 4;
+}
+
+message QueryResponse {
+  string response = 1;
+  repeated Source sources = 2;
+  QueryMetadata metadata = 3;
+}
+
+message Source {
+  string content = 1;
+  float score = 2;
+  map<string, string> metadata = 3;
+}
+
+message QueryMetadata {
+  float latency = 1;
+  int32 tokens_used = 2;
+  map<string, string> additional_metadata = 3;
+}
+
+// Benchmark pipeline messages
+message BenchmarkRequest {
+  repeated string test_queries = 1;
+  repeated BenchmarkConfig configurations = 2;
+}
+
+message BenchmarkConfig {
+  string model = 1;
+  RetrievalOptions retrieval_options = 2;
+  LLMOptions llm_options = 3;
+}
+
+message BenchmarkResponse {
+  string benchmark_id = 1;
+  repeated BenchmarkResult results = 2;
+  BenchmarkSummary summary = 3;
+}
+
+message BenchmarkResult {
+  string query = 1;
+  BenchmarkConfig config = 2;
+  QueryResponse result = 3;
+  float latency = 4;
+  string timestamp = 5;
+}
+
+message BenchmarkSummary {
+  float average_latency = 1;
+  float success_rate = 2;
+  map<string, float> metrics = 3;
+}

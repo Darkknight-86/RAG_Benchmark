@@ -1,0 +1,19 @@
+// pipeline.proto
+syntax = "proto3";
+
+service PipelineService {
+  // Server streaming - one request, stream of status updates
+  rpc ExecutePipeline(PipelineRequest) returns (stream PipelineStatus);
+}
+
+message PipelineRequest {
+  map<string, string> params = 1;
+}
+
+message PipelineStatus {
+  string step = 1;
+  string message = 2;
+  bool is_complete = 3;
+  bool is_error = 4;
+  string error_message = 5;
+}
