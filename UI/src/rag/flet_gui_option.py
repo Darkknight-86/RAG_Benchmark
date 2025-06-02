@@ -35,9 +35,9 @@ def main(page: ft.Page):
         now = datetime.now().strftime("%H:%M:%S")
 
         # User message
-        response_list.controls.append(ft.Text("You", size=12, italic=True, color="gray"))
+        response_list.controls.append(ft.Text("You", size=12, italic=True, color="#878787"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(prompt, size=14, selectable=True),
+            content=ft.Text(prompt, size=14, selectable=True, color="#878787"),
             bgcolor="#d1c4e9",  # Light purple
             padding=10,
             border_radius=8
@@ -55,9 +55,9 @@ def main(page: ft.Page):
 
         total_time = vector_latency + llm_latency
 
-        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="gray"))
+        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="#878787"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(response, size=14, selectable=True),
+            content=ft.Text(response, size=14, selectable=True, color="#878787"),
             bgcolor="#f2f2f2",  # Light gray
             padding=10,
             border_radius=8
@@ -91,39 +91,51 @@ def main(page: ft.Page):
         latency_text.value = ""
         page.update()
 
-
-
     # --- Dialog Pop up Setup ---
     info_dialog = ft.AlertDialog(
         modal=True,
-        title=ft.Text("About Vectra", size=18, weight=ft.FontWeight.NORMAL, color="white"),
+        bgcolor="#806491",
+        title=ft.Text("Welcome to Vectra!", size=20, weight=ft.FontWeight.W_500, color="white"),
         content=ft.Container(
             content=ft.Text(
-                "Vectra is a research tool that simulates how AI uses external data to improve answers "
-                "through Retrieval-Augmented Generation (RAG). It shows how long it takes to fetch "
-                "and respond using vector databases!\n\n"
-                "Type a question asking Vectra about economics to receive a response!",
-                color="white",
-                size=14,
+                spans=[
+                    ft.TextSpan(
+                        text="Vectra is a research tool that simulates how AI uses external data to improve answers "
+                            "through Retrieval-Augmented Generation (RAG). It shows how long it takes to fetch "
+                            "and respond using vector databases!\n\n⭐Ask Vectra about ",
+                        style=ft.TextStyle(color="white", weight=ft.FontWeight.W_200, size=14)
+                    ),
+                    ft.TextSpan(
+                        text="economics",
+                        style=ft.TextStyle(weight=ft.FontWeight.BOLD, color="white", size=14)
+                    ),
+                    ft.TextSpan(
+                        text=" to receive a response ⭐",
+                        style=ft.TextStyle(color="white", size=14)
+                    )
+                    
+                ]
             ),
-            bgcolor="#806491",  # Dark purple background
-            padding=20,
-            border_radius=10,
-        ),
+    bgcolor="#806491",
+    border=ft.border.all(2, "#806491"),  # Purple border
+    border_radius=10,
+    padding=0
+),
+
         actions=[
             ft.TextButton(
                 "Let's Go!",
                 on_click=lambda e: close_dialog(),
                 style=ft.ButtonStyle(
-                    bgcolor="#806491",
-                    color="white",
+                    bgcolor="white",
+                    color="black",
+                    overlay_color= "#EAEAEA",
                     shape=ft.RoundedRectangleBorder(radius=8),
                 ),
             )
         ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
-
 
     def show_info_dialog(e=None):
         info_dialog.open = True
@@ -153,11 +165,14 @@ def main(page: ft.Page):
         label="Enter your query...",
         border_radius=10,
         border_color="#CCCCCC",
+        color="#878787",
         expand=True,
         on_submit=query_ai,
         suffix=ft.IconButton(
             icon="info_outline",
             icon_color="white",
+            icon_size=17,
+            width=33,
             bgcolor="#000000",
             on_click=show_info_dialog,
             style=ft.ButtonStyle(shape=ft.CircleBorder())
@@ -165,7 +180,7 @@ def main(page: ft.Page):
     )
 
     ask_button = ft.ElevatedButton(
-        "↵",
+        "↑",
         on_click=query_ai,
         style=ft.ButtonStyle(
             shape=ft.RoundedRectangleBorder(radius=10),
@@ -199,6 +214,13 @@ def main(page: ft.Page):
         latency_text,
         button_row
     )
+
+    # Show info dialog on first load
+    async def on_connect(e):
+        info_dialog.open = True
+        await page.update_async()
+
+    show_info_dialog()
 
 
 ft.app(target=main)
