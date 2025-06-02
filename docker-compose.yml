@@ -7,6 +7,9 @@ services:
     ports:
       - "8000:8000"   # REST
       - "50051:50051" # gRPC
+    volumes:
+      - ./API_Gateway/exports:/app/API_Gateway/exports
+      - ./.env:/app/.env
     depends_on:
       - embeddings
       - ingestion
@@ -20,12 +23,33 @@ services:
     container_name: embeddings
     ports:
       - "50052:50052"
+    environment:
+      - POSTGRES_DB=rag_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+    depends_on:
+      - postgres
+    networks: [rag-network]
+
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=rag_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks: [rag-network]
 
   ingestion:
     build:
       context: .
-      dockerfile: Ingestion/grpc/Dockerfile
+      dockerfile: Ingestion/Dockerfile
     container_name: ingestion
     ports:
       - "50053:50053"
@@ -42,24 +66,14 @@ services:
     container_name: llm
     ports:
       - "50054:50054"
-    networks: [rag-network]
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
-    networks: [rag-network]
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
+      - ./.env:/app/.env
+    environment:
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-google/flan-t5-small}
+      - DEFAULT_TEMPERATURE=${DEFAULT_TEMPERATURE:-0.7}
+      - DEFAULT_MAX_TOKENS=${DEFAULT_MAX_TOKENS:-200}
+      - DEFAULT_TOP_K=${DEFAULT_TOP_K:-5}
+      - SUPPORTED_MODELS=${SUPPORTED_MODELS:-google/flan-t5-small,google/flan-t5-base,google/flan-t5-large}
     networks: [rag-network]
 
 networks:
@@ -67,4 +81,4 @@ networks:
     driver: bridge
 
 volumes:
-  metrics-data:
+  postgres_data:

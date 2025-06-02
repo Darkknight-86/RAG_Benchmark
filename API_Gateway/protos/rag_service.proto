@@ -35,8 +35,10 @@ message IngestResponse {
 // Query pipeline messages
 message QueryRequest {
   string query = 1;
-  RetrievalOptions retrieval_options = 2;
-  LLMOptions llm_options = 3;
+  string model_name = 2;  // Optional model name
+  int32 top_k = 3;       // Number of context chunks to retrieve
+  float temperature = 4;  // LLM temperature
+  int32 max_tokens = 5;  // Max tokens for response
 }
 
 message RetrievalOptions {
@@ -53,9 +55,9 @@ message LLMOptions {
 }
 
 message QueryResponse {
-  string response = 1;
+  string answer = 1;
   repeated Source sources = 2;
-  QueryMetadata metadata = 3;
+  Metrics metrics = 3;
 }
 
 message Source {
@@ -100,4 +102,13 @@ message BenchmarkSummary {
   float average_latency = 1;
   float success_rate = 2;
   map<string, float> metrics = 3;
+}
+
+// Performance metrics
+message Metrics {
+  float vector_latency = 1;  // Time taken for vector search
+  float llm_latency = 2;     // Time taken for LLM generation
+  float total_time = 3;      // Total processing time
+  int32 tokens_used = 4;     // Number of tokens used
+  string model_name = 5;     // Name of the model used
 }
