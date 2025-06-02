@@ -37,6 +37,18 @@ def generate_grpc_code():
             init_file.touch()
             print(f"Created {init_file}")
 
+        # Fix the import in the generated grpc file
+        grpc_file = output_dir / "rag_service_pb2_grpc.py"
+        if grpc_file.exists():
+            content = grpc_file.read_text()
+            # Replace absolute import with relative import
+            content = content.replace(
+                "import rag_service_pb2 as rag__service__pb2",
+                "from . import rag_service_pb2 as rag__service__pb2"
+            )
+            grpc_file.write_text(content)
+            print(f"Fixed imports in {grpc_file}")
+
     except subprocess.CalledProcessError as e:
         print(f"Error generating gRPC code: {e}")
         raise

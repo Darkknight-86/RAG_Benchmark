@@ -10,6 +10,7 @@ import atexit
 from flask import Flask
 
 from .metrics import MetricsCollector, RAGBenchmarks, MetricsDashboard
+from .routes import api
 
 class APIGatewayServer:
     """Main API Gateway server class."""
@@ -23,7 +24,8 @@ class APIGatewayServer:
         self.collector = MetricsCollector(self.benchmarks)
         self.dashboard = MetricsDashboard(self.benchmarks, self.collector)
 
-        # Register the dashboard blueprint
+        # Register the blueprints
+        self.app.register_blueprint(api, url_prefix='/api')
         self.app.register_blueprint(self.dashboard.blueprint, url_prefix='/api')
 
         # Set up logging
