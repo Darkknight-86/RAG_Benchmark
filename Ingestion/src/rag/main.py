@@ -1,4 +1,4 @@
-import llamap, loader
+import core
 
 def execute(
     csv_filename="arxiv_papers_metadata.csv",
@@ -8,7 +8,7 @@ def execute(
     clean_existing=True
 ):
     print("Step one: scraping PDFs...")
-    loader.scrape_arxiv_papers(
+    core.scrape_arxiv_papers(
         years=years,
         max_results=max_results,
         output_dir=output_dir,
@@ -18,7 +18,7 @@ def execute(
     print("Step one complete: scraped PDFs")
     print("Step two: convert exported PDFs to text")
     print(f"Starting to process PDFs from {csv_filename}")
-    llamap.process_csv_and_pdfs(csv_filename)
+    core.process_csv_and_pdfs(csv_filename)
     print("Step two complete, check your S3 bucket.")
 
 if __name__ == "__main__":
