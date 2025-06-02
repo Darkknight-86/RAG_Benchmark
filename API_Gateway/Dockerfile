@@ -32,10 +32,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . .
 
 # Ensure imports work when running as module
-ENV PYTHONPATH=/app/API_Gateway/src
+ENV PYTHONPATH=/app:/app/API_Gateway/src
 
 # Generate gRPC stubs (shared proto folder lives inside image already)
-RUN python API_Gateway/generate_grpc.py
+RUN cd /app && python API_Gateway/generate_grpc.py
 
 EXPOSE 50051 8000
 

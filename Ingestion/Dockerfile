@@ -10,9 +10,10 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY Ingestion/grpc .
+COPY Ingestion/RAG /RAG
 COPY API_Gateway/protos ./protos
-RUN python -m grpc_tools.protoc -I./protos --python_out=./src --grpc_python_out=./src ./protos/rag_service.proto
+RUN python -m grpc_tools.protoc -I./protos --python_out=./src --grpc_python_out=./src ./protos/ingestion_service.proto
 EXPOSE 50053
 # Run server script directly
 ENV PYTHONPATH=/app/src
-CMD ["python", "src/grpc/grpc/server.py"]
+CMD ["python", "src/ingestion_server/grpc/server.py"]

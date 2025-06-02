@@ -1,9 +1,11 @@
-// pipeline.proto
 syntax = "proto3";
 
+package ingestion;
+
+// Service definition for the Ingestion Pipeline
 service PipelineService {
-  // Server streaming - one request, stream of status updates
-  rpc ExecutePipeline(PipelineRequest) returns (stream PipelineStatus);
+  // Execute the ingestion pipeline
+  rpc ExecutePipeline(PipelineRequest) returns (stream PipelineStatus) {}
 }
 
 message PipelineRequest {

@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   api-gateway:
     build:
@@ -31,6 +29,10 @@ services:
     container_name: ingestion
     ports:
       - "50053:50053"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - LLAMA_API_KEY=${LLAMA_API_KEY}
     networks: [rag-network]
 
   llm:
