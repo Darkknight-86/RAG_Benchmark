@@ -1,22 +1,29 @@
 [project]
-name = "rag"
+name = "ui"
 version = "0.1.0"
-description = ""
+description = "UI for RAG System"
 authors = [
     {name = "Darkknight-86",email = "bewick.j@northeastern.edu"}
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.8"
 dependencies = [
     "requests>=2.31.0",
-    "ttkbootstrap>=1.10.1",
-    "flet>=0.19.0"
+    "flet>=0.21.0"
 ]
 
 [tool.poetry]
 packages = [{include = "rag", from = "src"}]
+name = "ui"
+version = "0.1.0"
+description = "UI for RAG System"
+authors = ["Your Name <your.email@example.com>"]
 
+[tool.poetry.dependencies]
+python = "^3.8"
+flet = "^0.21.0"
+requests = "^2.31.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
