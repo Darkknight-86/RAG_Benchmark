@@ -3,7 +3,6 @@ from Adapters.CassandraAdapter import CassandraAdapter
 from Adapters.ClickHouseAdapter import ClickHouseAdapter
 from Adapters.OpenSearchAdapter import OpenSearchAdapter
 from Adapters.PostgresAdapter import PostgresAdapter
-from Adapters.VectorStoreAdapter import VectorStoreAdapter
 from chunker import SpecterChunker
 from embedder import SpecterEmbedder
 from dotenv import load_dotenv
@@ -28,7 +27,7 @@ embedder = SpecterEmbedder()
 vector_stores = [
     CassandraAdapter(),
     PostgresAdapter(),
-    ClickHouseAdapter(),
+    #ClickHouseAdapter(),
     OpenSearchAdapter()
 ] # list[VectorStoreAdapter]
 
