@@ -6,7 +6,7 @@ authors = [
     {name = "Darkknight-86",email = "bewick.j@northeastern.edu"}
 ]
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = "==3.11.3"
 dependencies = [
     "fastapi (>=0.115.12,<0.116.0)",
     "uvicorn (>=0.34.2,<0.35.0)",
@@ -16,12 +16,15 @@ dependencies = [
     "grpcio (>=1.62.0,<2.0.0)",
     "grpcio-tools (>=1.62.0,<2.0.0)",
     "protobuf (>=4.25.3,<5.0.0)",
-    "dotenv (>=0.9.9,<0.10.0)"
+    "dotenv (>=0.9.9,<0.10.0)",
+    "nltk (>=3.9.1,<4.0.0)",
+    "torch (==2.2.2)",
+    "transformers (<4.40.0)",
+    "numpy (<2)"
 ]
 
 [tool.poetry]
 packages = [{include = "rag", from = "src"}]
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
