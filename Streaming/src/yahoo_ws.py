@@ -1,19 +1,48 @@
 import yliveticker
+import helpers
 import time
-from collections import deque
 
-msg_times = deque(maxlen=1000)  # Store timestamps of recent messages
 
 def on_new_msg(ws, msg):
-    now = time.time()
-    msg_times.append(now)
-    # Calculate messages in the last second
-    one_sec_ago = now - 1
-    freq = sum(1 for t in msg_times if t >= one_sec_ago)
     print(f"Msg: {msg}")
-    print(f"Messages in the last second: {freq}")
+    asx_open_status = helpers.is_asx_open()
+    
+    pre_s3_format = {
+        'security': str(msg['id']),
+        'price': int(round(msg['price'], msg['priceHint'])),
+        'changePercent': int(round(msg['changePercent'], msg['priceHint'])),
+        'tradeVolume': int(msg['dayVolume']),
+        'isMarketOpen': asx_open_status['is_open'],
+        'marketStatus': asx_open_status['status'],
+        'timestamp': helpers.epoch_to_json_date(msg['timestamp'])
+    }
+    
+    file_name = msg['id'] + "-" + round(time.time()) + ".json"
+    helpers.upload_to_s3(file_name, pre_s3_format)
 
-# Subscribe to Australian tickers
+# {
+#     'id': 'WBC.AX',
+#     'exchange': 'ASX',
+#     'quoteType': 8,
+#     'price': 32.619998931884766,
+#     'timestamp': 1748931012000,
+#     'marketHours': 1,
+#     'changePercent': 1.3673045635223389,
+#     'dayVolume': 0,
+#     'change': 0.4399986267089844,
+#     'priceHint': 2
+# }
+
+# Meaning of the JSON above:
+# priceHint: how many decimals should be shown for the price
+#            (keep in mind prices are in AUD)
+# dayVolume: amount traded today, will be 0 if after hours
+# quoteType: should always be 8 for equity (stock)
+
+
+# Format that will be uploaded to Amazon S3:
+
+
 yliveticker.YLiveTicker(
     on_ticker=on_new_msg,
     ticker_names=["CBA.AX", "BHP.AX", "WBC.AX", "NAB.AX", "ANZ.AX"]
