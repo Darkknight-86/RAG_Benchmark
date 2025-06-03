@@ -21,4 +21,7 @@ aws s3 ls s3://ragproject-store/streamed/
 
 # wipe it all
 aws s3 rm s3://ragproject-store/streamed/ --recursive
+
+# grab total size
+aws s3 ls s3://ragproject-store/streamed/ --recursive --human-readable --summarize | grep "Total"
 ```
