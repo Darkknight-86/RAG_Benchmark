@@ -4,21 +4,25 @@ import time
 
 
 def on_new_msg(ws, msg):
-    print(f"Msg: {msg}")
+    #print(f"Msg: {msg}")
     asx_open_status = helpers.is_asx_open()
+    
+    print("round(xxx, " + str(msg['priceHint']) + ")")
     
     pre_s3_format = {
         'security': str(msg['id']),
-        'price': int(round(msg['price'], msg['priceHint'])),
-        'changePercent': int(round(msg['changePercent'], msg['priceHint'])),
+        'price': round(msg['price'], msg['priceHint']),
+        'changePercent': round(msg['changePercent'], int(msg['priceHint'])),
         'tradeVolume': int(msg['dayVolume']),
         'isMarketOpen': asx_open_status['is_open'],
         'marketStatus': asx_open_status['status'],
         'timestamp': helpers.epoch_to_json_date(msg['timestamp'])
     }
     
-    file_name = msg['id'] + "-" + round(time.time()) + ".json"
+    file_name = str(msg['id']) + "-" + str(round(time.time())) + ".json"
     helpers.upload_to_s3(file_name, pre_s3_format)
+    
+    print("[DEBUG] inserted 1 record to S3, w/ title of " + file_name)
 
 # {
 #     'id': 'WBC.AX',
