@@ -1,34 +1,23 @@
-from sentence_transformers import SentenceTransformer
+import torch
+from transformers import AutoTokenizer, AutoModel
 
 class SpecterEmbedder:
-    """
-        Wrapper for allenai/specter2_base embedding model using sentence-transformers.
-
-        This embedder is optimized for scientific document chunks, returning 768-dimensional
-        dense vectors suitable for semantic search and retrieval.
-    """
-
-    def __init__(self, model_name="allenai/specter2_base", normalize=True):
-        """
-            Initialize the embedder with the given model.
-
-            Args:
-                model_name (str): Hugging Face model name.
-                normalize (bool): Whether to normalize embeddings (cos similarity).
-        """
-
-        self.model = SentenceTransformer(model_name)
-        self.normalize = normalize
+    def __init__(self, model_name="allenai/specter2_base"):
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
 
     def embed(self, texts):
-        """
-            Embed a list of texts.
+        self.model.eval()
+        embeddings = []
 
-            Args:
-                texts (List[str]): List of document chunks or queries.
+        with torch.no_grad():
+            for text in texts:
+                inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                outputs = self.model(**inputs)
+                cls_embedding = outputs.last_hidden_state[:, 0, :]  # CLS token
+                embeddings.append(cls_embedding.squeeze().cpu().numpy())
 
-            Returns:
-                List[List[float]]: List of 768-dimensional embedding vectors.
-        """
-
-        return self.model.encode(texts, convert_to_tensor=False, normalize_embeddings=self.normalize)
+        return embeddings

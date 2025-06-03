@@ -1,11 +1,11 @@
 import boto3
-from RAG.src.rag.chunker import SpecterChunker
-from RAG.src.rag.embedder import SpecterEmbedder
+from embeddings.src.rag.chunker import SpecterChunker
+from embeddings.src.rag.embedder import SpecterEmbedder
 from dotenv import load_dotenv
 import os
 
 # Setup
-object_key = "scores.txt"
+object_key = "papers/scores.txt"
 bucket_name = "ragproject-store"
 
 # Load environment variables
@@ -18,17 +18,21 @@ s3_client = boto3.client(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
 
+response = s3_client.list_objects_v2(Bucket=bucket_name)
+for obj in response.get('Contents', []):
+    print(obj['Key'])  # Full path of each object
+
 # Get test object
 response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
 text_data = response['Body'].read().decode('utf-8')
+print(f"Text object with {len(text_data)} characters")
 
 # Chunk the document
 chunker = SpecterChunker()
 chunks = chunker.chunk([text_data])
 print(f"\nChunked into {len(chunks)} pieces.")
-for i, c in enumerate(chunks[:3]):
-    print(f"\n--- Chunk {i} ---\n{c.page_content[:300]}...\n")
-
+for i, c in enumerate(chunks):
+    print(f"\n--- Chunk {i} ---\n{c.page_content}\n")
 
 # --- Step 3: Embed chunks ---
 embedder = SpecterEmbedder()
