@@ -25,17 +25,12 @@ poetry run python src\yahoo_ws.py
 ![alt text](image.png)
 
 
-### Basic S3 CLI Commands
-
-This is deprecated, we're no longer using S3... just here for reference.
+### Azure CLI Configuration
 
 ```
-# list all JSON uploads
-aws s3 ls s3://ragproject-store/streamed/
+# login via the web browser (you'll need to enter in a code on the microsoft website)
+az login --use-device-code
 
-# wipe it all
-aws s3 rm s3://ragproject-store/streamed/ --recursive
-
-# grab total size
-aws s3 ls s3://ragproject-store/streamed/ --recursive --human-readable --summarize | grep "Total"
+# find the name of your "container" (just a fancy term for bucket)
+az storage account list --query "[].name" --output tsv
 ```
