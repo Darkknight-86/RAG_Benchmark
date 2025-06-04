@@ -1,5 +1,14 @@
 # Streaming Data
 
+# Running the Pipeline
+```shell
+poetry lock
+poetry install
+poetry run python src\yahoo_ws.py
+```
+
+^^^ assuming you have your .env at the root folder up to date with Azure credentials.
+
 ### Schema for JSON Uploaded to Azure Blob Storage
 ```json
 {
@@ -18,7 +27,7 @@
 
 ### Basic S3 CLI Commands
 
-This is deprecated, we're no longer using S3...
+This is deprecated, we're no longer using S3... just here for reference.
 
 ```
 # list all JSON uploads
