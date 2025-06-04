@@ -1,7 +1,28 @@
 from datetime import datetime, time
-from config import S3_CLIENT, BUCKET_NAME
+from azure.storage.blob import BlobServiceClient
 import json
 import pytz
+import os
+from dotenv import load_dotenv
+from pathlib import Path
+
+env_path = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(dotenv_path=env_path)
+
+
+# Azure configuration - these should be loaded from environment variables
+AZURE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+AZURE_CONTAINER_NAME = os.getenv('AZURE_BLOB_NAME')
+
+# Initialize blob service client
+blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+
+# Create container if it doesn't exist
+try:
+    container_client.create_container()
+except Exception:
+    pass  # Container already exists
 
 def is_asx_open():
     """
@@ -79,49 +100,51 @@ def is_asx_open():
 
 def upload_to_s3(file_name, contents):
     """
-    Upload file contents to S3 bucket.
+    Upload file contents to Azure Blob Storage (renamed from S3 for compatibility).
     
     Args:
         file_name: Name of the file (e.g., 'data.json')
         contents: File contents (can be string, bytes, or dict/list for JSON)
         
     Returns:
-        dict: Response from S3 upload operation
+        dict: Response from Azure upload operation
         
     Raises:
         Exception: If upload fails
     """
-    # Construct the S3 key path
-    s3_key = f"streamed/{file_name}"
+    # Construct the blob path
+    blob_name = f"streamed/{file_name}"
     
     # Handle different content types
     if isinstance(contents, (dict, list)):
         # Convert dict/list to JSON string
         body = json.dumps(contents, indent=2)
-        content_type = 'application/json'
     elif isinstance(contents, str):
         body = contents
-        content_type = 'text/plain'
     elif isinstance(contents, bytes):
         body = contents
-        content_type = 'application/octet-stream'
     else:
         raise ValueError(f"Unsupported content type: {type(contents)}")
     
     try:
-        # Upload to S3
-        response = S3_CLIENT.put_object(
-            Bucket=BUCKET_NAME,
-            Key=s3_key,
-            Body=body,
-            ContentType=content_type
+        # Get blob client
+        blob_client = container_client.get_blob_client(blob_name)
+        
+        # Upload to Azure - simplified without content_settings
+        response = blob_client.upload_blob(
+            body,
+            overwrite=True
         )
         
-        print(f"Successfully uploaded {file_name} to s3://{BUCKET_NAME}/{s3_key}")
-        return response
+        print(f"Successfully uploaded {file_name} to Azure container {AZURE_CONTAINER_NAME}/{blob_name}")
+        return {
+            'etag': response.get('etag', ''),
+            'last_modified': response.get('last_modified', ''),
+            'blob_name': blob_name
+        }
         
     except Exception as e:
-        print(f"Error uploading {file_name} to S3: {str(e)}")
+        print(f"Error uploading {file_name} to Azure: {str(e)}")
         raise
     
 def epoch_to_json_date(epoch_ms):
