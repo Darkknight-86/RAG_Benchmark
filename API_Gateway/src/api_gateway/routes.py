@@ -17,6 +17,11 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Create blueprint for API routes
@@ -37,9 +42,12 @@ def query():
     }
     """
     start_time = time.time()
+    logger.info("Received query request")
+
     try:
         data = request.get_json()
         if not data or 'query' not in data:
+            logger.error("Missing query field in request")
             return jsonify({"error": "Query field is required"}), 400
 
         # Get parameters with defaults
@@ -49,10 +57,12 @@ def query():
         temperature = data.get('temperature', float(os.getenv("DEFAULT_TEMPERATURE", "0.7")))
         max_tokens = data.get('max_tokens', int(os.getenv("DEFAULT_MAX_TOKENS", "200")))
 
-        logger.info(f"Processing query: {query_text}")
+        logger.info(f"Processing query with parameters: model={model_name}, temp={temperature}, max_tokens={max_tokens}, top_k={top_k}")
 
         # Use the LLM client to process the query
+        logger.info("Initializing LLM client")
         with LLMClient() as client:
+            logger.info("Sending query to LLM service")
             response = client.query(
                 query_text=query_text,
                 model_name=model_name,
@@ -60,10 +70,12 @@ def query():
                 temperature=temperature,
                 max_tokens=max_tokens
             )
+            logger.info("Received response from LLM service")
 
             total_time = time.time() - start_time
 
             # Record metrics
+            logger.info("Recording metrics")
             metrics_collector.record_query(
                 query=query_text,
                 response=response.answer,
@@ -83,31 +95,19 @@ def query():
                     "llm_latency": response.metrics.llm_latency,
                     "total_time": total_time,
                     "tokens_used": response.metrics.tokens_used,
-                    "model_name": response.metrics.model_name
+                    "model_name": response.metrics.model_name,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "top_k": top_k
                 }
             }
 
+            logger.info(f"Query completed in {total_time:.2f} seconds")
             return jsonify(result), 200
 
     except Exception as e:
-        total_time = time.time() - start_time
-        error_msg = str(e)
-        logger.error(f"Error processing query: {error_msg}")
-
-        # Record error metrics
-        metrics_collector.record_query(
-            query=query_text if 'query_text' in locals() else "unknown",
-            response="",
-            vector_latency=0,
-            llm_latency=0,
-            total_time=total_time,
-            tokens_used=0,
-            vector_store_type="unknown",
-            status="error",
-            error=error_msg
-        )
-
-        return jsonify({"error": error_msg}), 500
+        logger.error(f"Error processing query: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 @api.route('/metrics/export', methods=['GET'])
 def export_metrics():

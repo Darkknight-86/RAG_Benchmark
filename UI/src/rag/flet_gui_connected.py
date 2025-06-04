@@ -1,4 +1,5 @@
 import flet as ft
+import webbrowser
 import requests
 import time
 import csv
@@ -117,9 +118,9 @@ def main(page: ft.Page):
             return
 
         # User message
-        response_list.controls.append(ft.Text("You", size=12, italic=True, color="#878787"))
+        response_list.controls.append(ft.Text("You", size=12, italic=True, color="#001F3F"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(prompt, size=14, selectable=True, color="#878787"),
+            content=ft.Text(prompt, size=14, selectable=True, color="#001F3F"),
             bgcolor="#d1c4e9",  # Light purple
             padding=10,
             border_radius=8
@@ -129,9 +130,9 @@ def main(page: ft.Page):
         response, vector_latency, llm_latency, total_time, tokens, model_name, temperature, max_tokens, top_k = call_api_gateway(prompt)
 
         # AI response
-        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="#878787"))
+        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="#001F3F"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(response, size=14, selectable=True, color="#878787"),
+            content=ft.Text(response, size=14, selectable=True, color="#001F3F"),
             bgcolor="#f2f2f2",  # Light gray
             padding=10,
             border_radius=8
@@ -166,6 +167,10 @@ def main(page: ft.Page):
         response_list.controls.clear()
         latency_text.value = ""
         page.update()
+
+    def open_grafana(e=None):
+        grafana_url = "http://localhost:3000/d/your-dashboard-id"  # Replace with your actual dashboard URL
+        webbrowser.open(grafana_url)
 
     # --- Dialog Pop up Setup ---
     info_dialog = ft.AlertDialog(
@@ -231,7 +236,7 @@ def main(page: ft.Page):
         label="Enter your query...",
         border_radius=10,
         border_color="#CCCCCC",
-        color="#878787",
+        color="#001F3F",
         expand=True,
         on_submit=query_ai,
         suffix=ft.IconButton(
@@ -268,10 +273,18 @@ def main(page: ft.Page):
     )
     clear_button = ft.OutlinedButton("Clear Chat", on_click=clear_chat)
 
+    grafana_button = ft.ElevatedButton(
+        "View Grafana Dashboard",
+        on_click=open_grafana,
+        style=ft.ButtonStyle(bgcolor="#001F3F", color="white")
+    )
+
     button_row = ft.Row([
+        grafana_button,
         export_button,
         clear_button
     ], spacing=20, alignment=ft.MainAxisAlignment.START)
+
 
     # Page Layout
     page.add(
