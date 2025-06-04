@@ -26,7 +26,7 @@ chunker = SpecterChunker()
 embedder = SpecterEmbedder()
 vector_stores = [
     CassandraAdapter(),
-    PostgresAdapter(),
+    #PostgresAdapter(),
     #ClickHouseAdapter(),
     OpenSearchAdapter()
 ] # list[VectorStoreAdapter]
