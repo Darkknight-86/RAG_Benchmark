@@ -1,6 +1,6 @@
 # Streaming Data
 
-### Schema for JSON Uploaded to S3
+### Schema for JSON Uploaded to Azure Blob Storage
 ```json
 {
     'security': string,
@@ -13,7 +13,12 @@
 }
 ```
 
+![alt text](image.png)
+
+
 ### Basic S3 CLI Commands
+
+This is deprecated, we're no longer using S3...
 
 ```
 # list all JSON uploads
