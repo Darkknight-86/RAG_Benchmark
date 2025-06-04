@@ -5,9 +5,13 @@ Configuration settings for the LLM service.
 import os
 from typing import Dict, Any
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
+# Get the project root directory (two levels up from this file)
+project_root = Path(__file__).parent.parent.parent.parent
+
+# Load environment variables from project root
+load_dotenv(project_root / ".env")
 
 # Model Configuration
 MODEL_CONFIG: Dict[str, Any] = {

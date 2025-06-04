@@ -5,7 +5,10 @@ This module handles all aspects of prompt formatting, validation, and management
 """
 
 from typing import Dict, Optional, List
+import logging
 from .config import PROMPT_TEMPLATES, MODEL_CONFIG, SYSTEM_PROMPTS, get_system_prompt
+
+logger = logging.getLogger(__name__)
 
 class PromptManager:
     """Manages prompt formatting and validation for different models."""
@@ -23,17 +26,25 @@ class PromptManager:
         Returns:
             Formatted prompt string
         """
+        logger.info(f"Formatting prompt for model: {model_name}")
+
         template = PromptManager._get_template(model_name)
         system_prompt = get_system_prompt(model_name)
 
-        # Combine context into a single string
+        # Combine context into a single string, handle empty context
         context_str = "\n".join(context) if context else "No relevant context found."
 
-        return template.format(
-            query=query,
-            context=context_str,
-            system_prompt=system_prompt
-        )
+        try:
+            formatted_prompt = template.format(
+                query=query,
+                context=context_str,
+                system_prompt=system_prompt
+            )
+            logger.debug(f"Formatted prompt: {formatted_prompt[:100]}...")  # Log first 100 chars
+            return formatted_prompt
+        except KeyError as e:
+            logger.error(f"Error formatting prompt: {str(e)}")
+            raise ValueError(f"Error formatting prompt: {str(e)}")
 
     @staticmethod
     def _get_template(model_name: str) -> str:
@@ -71,6 +82,7 @@ class PromptManager:
         Returns:
             Dict containing model requirements and capabilities
         """
+        logger.info(f"Getting requirements for model: {model_name}")
         return {
             "max_input_length": 512,  # Example value, should be model-specific
             "supports_streaming": "instruct" in model_name.lower(),

@@ -8,6 +8,9 @@ from typing import Tuple, Dict
 from rag.llm_manager import llm_manager
 from rag.config import MODEL_CONFIG, validate_parameters
 from rag.prompt_manager import prompt_manager
+import logging
+
+logger = logging.getLogger(__name__)
 
 def process_query(
     user_query: str,
@@ -32,6 +35,10 @@ def process_query(
         - metrics: Dict with performance metrics
     """
     try:
+        # Ensure model_name is set
+        model_name = model_name or MODEL_CONFIG["default_model"]
+        logger.info(f"Processing query with model: {model_name}")
+
         # Validate parameters
         validate_parameters(temperature, max_tokens, top_k)
 
@@ -39,13 +46,12 @@ def process_query(
         prompt_manager.validate_query(user_query)
 
         # Get model requirements for metrics
-        model_name = model_name or MODEL_CONFIG["default_model"]
         model_reqs = prompt_manager.get_model_requirements(model_name)
 
         # Generate response using LLM manager
         response_text, llm_latency, tokens_used = llm_manager.generate_response(
             prompt=user_query,
-            model_name=model_name,
+            model_name=model_name,  # Now we know this is always set
             temperature=temperature,
             max_tokens=max_tokens,
             top_k=top_k
@@ -67,6 +73,7 @@ def process_query(
         return response_text, metrics
 
     except Exception as e:
+        logger.error(f"Error processing query: {str(e)}", exc_info=True)
         metrics = {
             "vector_latency": 0.0,
             "llm_latency": 0.0,

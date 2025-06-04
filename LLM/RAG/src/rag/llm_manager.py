@@ -72,13 +72,16 @@ class LLMManager:
         top_k: int = MODEL_CONFIG["default_top_k"]
     ) -> Tuple[str, float, int]:
         """Generate a response from the model."""
+        # Ensure model_name is set
+        model_name = model_name or self.default_model
+        print(f"Generating response with model: {model_name}")
+
         # Validate parameters
         validate_parameters(temperature, max_tokens, top_k)
 
         # Validate and format prompt
         prompt_manager.validate_query(prompt)
-        model_name = model_name or self.default_model
-        formatted_prompt = prompt_manager.format_prompt(prompt, model_name)
+        formatted_prompt = prompt_manager.format_prompt(prompt, [], model_name)  # Pass empty context list for now
 
         model, tokenizer = self.get_model(model_name)
 

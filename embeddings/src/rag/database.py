@@ -1,13 +1,29 @@
+"""
+Database module for the Embeddings service.
+
+This module handles all database operations for the embeddings service.
+"""
+
+import logging
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 import clickhouse_connect
 from typing import Optional, Any, List
-import os
 from dataclasses import dataclass
-from dotenv import load_dotenv
-from pathlib import Path
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Get the project root directory (two levels up from this file)
 project_root = Path(__file__).parent.parent.parent.parent
-load_dotenv(project_root / '.env')
+
+# Load environment variables from project root
+load_dotenv(project_root / ".env")
 
 def get_env_or_raise(key: str) -> str:
     value = os.getenv(key)
@@ -24,58 +40,106 @@ class DatabaseConfig:
     port: int = 8443
 
 class ClickHouseDatabase:
-    _instance: Optional['ClickHouseDatabase'] = None
-    _client: Optional[Any] = None
+    """ClickHouse database client for vector storage."""
 
-    def __new__(cls, config: Optional[DatabaseConfig] = None):
-        if cls._instance is None:
-            cls._instance = super(ClickHouseDatabase, cls).__new__(cls)
-            cls._instance._initialize(config)
-        return cls._instance
+    def __init__(self):
+        """Initialize the database connection."""
+        logger.info("Initializing ClickHouse database connection")
 
-    def _initialize(self, config: Optional[DatabaseConfig] = None):
-        if config is None:
-            try:
-                config = DatabaseConfig(
-                    host=get_env_or_raise('CLICKHOUSE_HOST'),
-                    user=get_env_or_raise('CLICKHOUSE_USER'),
-                    password=get_env_or_raise('CLICKHOUSE_PASSWORD'),
-                    secure=os.getenv('CLICKHOUSE_SECURE', 'true').lower() == 'true',
-                    port=int(os.getenv('CLICKHOUSE_PORT', '8443'))
-                )
-            except ValueError as e:
-                raise RuntimeError(f"Failed to initialize database configuration: {str(e)}")
+        # Get connection details from environment variables
+        self.host = os.getenv('CLICKHOUSE_HOST')
+        self.user = os.getenv('CLICKHOUSE_USER')
+        self.password = os.getenv('CLICKHOUSE_PASSWORD')
+        self.secure = os.getenv('CLICKHOUSE_SECURE', 'true').lower() == 'true'
+        self.port = int(os.getenv('CLICKHOUSE_PORT', '8443'))
 
-        self._client = clickhouse_connect.get_client(
-            host=config.host,
-            user=config.user,
-            password=config.password,
-            secure=config.secure,
-            port=config.port
-        )
+        if not all([self.host, self.user, self.password]):
+            logger.error("Missing required ClickHouse credentials")
+            raise RuntimeError("Database configuration could not be initialized. Required environment variables are not set.")
 
-    @property
-    def client(self):
-        if self._client is None:
-            raise RuntimeError("Database client not initialized")
-        return self._client
-
-    def execute_query(self, query: str, params: Optional[dict] = None) -> List[Any]:
-        """
-        Execute a query and return the results
-        """
-        return self.client.query(query, parameters=params).result_set
-
-    def test_connection(self) -> bool:
-        """
-        Test the database connection
-        """
+        logger.info(f"Connecting to ClickHouse at {self.host}:{self.port}")
         try:
-            result = self.execute_query("SELECT 1")
-            return result[0][0] == 1
+            self.client = clickhouse_connect.get_client(
+                host=self.host,
+                port=self.port,
+                username=self.user,
+                password=self.password,
+                secure=self.secure
+            )
+            logger.info("Successfully connected to ClickHouse")
         except Exception as e:
-            print(f"Connection test failed: {str(e)}")
-            return False
+            logger.error(f"Failed to connect to ClickHouse: {str(e)}", exc_info=True)
+            raise
+
+    def create_tables(self):
+        """Create necessary tables if they don't exist."""
+        logger.info("Creating database tables if they don't exist")
+        try:
+            # Create vectors table
+            self.client.command("""
+                CREATE TABLE IF NOT EXISTS vectors (
+                    id String,
+                    text String,
+                    embedding Array(Float32),
+                    metadata Map(String, String),
+                    created_at DateTime DEFAULT now()
+                ) ENGINE = MergeTree()
+                ORDER BY id
+            """)
+            logger.info("Successfully created vectors table")
+
+            # Create vector index
+            self.client.command("""
+                CREATE TABLE IF NOT EXISTS vector_index (
+                    id String,
+                    embedding Array(Float32)
+                ) ENGINE = MergeTree()
+                ORDER BY id
+            """)
+            logger.info("Successfully created vector_index table")
+
+        except Exception as e:
+            logger.error(f"Failed to create tables: {str(e)}", exc_info=True)
+            raise
+
+    def insert_vector(self, id: str, text: str, embedding: list, metadata: dict = None):
+        """Insert a vector into the database."""
+        logger.info(f"Inserting vector with ID: {id}")
+        try:
+            self.client.insert(
+                'vectors',
+                [[id, text, embedding, metadata or {}]],
+                column_names=['id', 'text', 'embedding', 'metadata']
+            )
+            logger.info(f"Successfully inserted vector {id}")
+        except Exception as e:
+            logger.error(f"Failed to insert vector {id}: {str(e)}", exc_info=True)
+            raise
+
+    def search_vectors(self, query_embedding: list, limit: int = 5):
+        """Search for similar vectors using cosine similarity."""
+        logger.info(f"Searching vectors with limit: {limit}")
+        try:
+            # Use cosine similarity for vector search
+            result = self.client.query("""
+                SELECT
+                    id,
+                    text,
+                    metadata,
+                    cosineDistance(embedding, {query_embedding:Array(Float32)}) as distance
+                FROM vectors
+                ORDER BY distance ASC
+                LIMIT {limit:UInt32}
+            """, parameters={
+                'query_embedding': query_embedding,
+                'limit': limit
+            })
+
+            logger.info(f"Found {len(result.result_rows)} similar vectors")
+            return result.result_rows
+        except Exception as e:
+            logger.error(f"Failed to search vectors: {str(e)}", exc_info=True)
+            raise
 
 # Example usage:
 if __name__ == '__main__':
