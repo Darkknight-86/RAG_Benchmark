@@ -1,9 +1,14 @@
+"""
+LLM Client for the RAG Gateway.
+
+This module provides a client for communicating with the LLM service.
+"""
+
 from __future__ import annotations
 
 import grpc
 from api_gateway.grpc import rag_service_pb2 as pb2  # type: ignore
 from api_gateway.grpc import rag_service_pb2_grpc as pb2_grpc  # type: ignore
-
 
 class LLMClient:
     """gRPC client wrapper for the LLM micro-service."""
@@ -22,8 +27,15 @@ class LLMClient:
         if self.channel:
             self.channel.close()
 
-    def query(self, query_text: str, top_k: int = 5):
+    def query(self, query_text: str, model_name: str = "google/flan-t5-small", top_k: int = 5, temperature: float = 0.7, max_tokens: int = 200):
         if not self.stub:
             raise RuntimeError("LLMClient not initialised (use with-statement)")
-        request = pb2.QueryRequest(query=query_text, retrieval_options=pb2.RetrievalOptions(top_k=top_k))
-        return self.stub.Query(request)
+        request = pb2.QueryRequest(
+            query=query_text,
+            model_name=model_name,
+            top_k=top_k,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        response = self.stub.Query(request)
+        return response

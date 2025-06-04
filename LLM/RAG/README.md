@@ -1,6 +1,8 @@
 # LLM Micro-service
 _Query → Retrieve vectors → Generate answer_
 
+> **Note:** This service is part of our LLM exploration to determine the best models for our RAG system.
+
 ---
 
 ## 🎯 Responsibilities

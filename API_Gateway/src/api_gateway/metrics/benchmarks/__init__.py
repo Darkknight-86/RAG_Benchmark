@@ -5,7 +5,11 @@ This module provides comprehensive benchmarking capabilities for RAG pipeline co
 including performance measurement, analytics, and data export.
 """
 
-from .core import RAGBenchmarks
+# Prefer the lightweight benchmarking implementation to reduce dependencies
+# If you need the full-featured implementation, import
+# `from .core import RAGBenchmarks as FullRAGBenchmarks` explicitly.
+
+from .lightweight import LightweightRAGBenchmarks as RAGBenchmarks
 from .models import (
     StageMetric,
     PopulationPipelineBenchmark,

@@ -24,105 +24,370 @@ flowchart LR
     M --> Grafana[(Grafana Dashboard)]
 ```
 
-* **API Gateway** (Flask + gRPC client stubs)
-  * Public REST entry-point
-  * Delegates heavy work to domain micro-services via gRPC
-  * Aggregates Prometheus + custom RAG metrics → CSV & dashboard
-* **Ingestion** – acquires raw data (web, S3…) & writes to object storage
-* **Embeddings** – chunks, embeds & stores vectors in FAISS / ChromaDB
-* **LLM** – retrieves top-K vectors, calls the LLM and returns answers
-* **UI** – optional desktop / web GUI that talks to Gateway REST API
-* **Prometheus & Grafana** – infrastructure containers for monitoring
+## 📋 Project Status
 
----
+### ✅ Completed Features
+- **API Gateway**
+  - REST API endpoints
+  - gRPC client stubs
+  - Basic metrics collection
+  - Health monitoring
+  - CSV export functionality
 
-## 🔌 Running the entire stack
+- **LLM Service**
+  - Multiple model support (Flan-T5 series)
+  - Prompt engineering system
+  - Response generation
+  - Basic metrics collection
+  - Model switching capability
 
+- **UI Service**
+  - Flet-based interface
+  - Query submission
+  - Response display
+  - Basic metrics visualization
+  - CSV export
+
+### 🚧 In Progress
+- **Embeddings Service**
+  - Vector database integration
+  - Multiple DB support (PostgreSQL, ClickHouse, Cassandra, OpenSearch (ElasticSearch) )
+  - Similarity search optimization
+  - Batch processing capabilities
+
+- **Ingestion Service**
+  - Automating the ingestion pipeline
+
+### 📅 Upcoming Features
+- **API Gateway**
+  - Advanced metrics aggregation
+  - Prometheus & Grafana
+
+
+- **Embeddings Service**
+  - optimization
+
+- **Ingestion Service**
+
+
+- **LLM Service**
+  - Streaming responses
+  - Model fine-tuning support
+  - Advanced prompt templates
+  - Context window optimization
+
+- **UI Service**
+  - Real-time metrics dashboard
+  - Advanced visualization
+  - User preferences
+
+### ⚠️ Deprecated/Removed
+- **Legacy Components**
+  - Tkinter UI (replaced by Flet)
+
+## 🏗️ Core Services
+
+### API Gateway
+- **Purpose**: Central entry point and metrics aggregation
+- **Tech Stack**: Python 3.11, Flask, gRPC
+- **Key Features**:
+  - REST API endpoints
+  - gRPC client stubs
+  - Metrics collection and export
+  - Health monitoring
+
+### Ingestion Service
+- **Purpose**: Data acquisition and preprocessing
+- **Tech Stack**: FastAPI, boto3
+- **Features**:
+  - PDF processing to plain text
+  - S3 integration
+
+
+### Embeddings Service
+- **Purpose**: Vector embeddings and storage
+- **Tech Stack**: FastAPI, langchain, FAISS/ChromaDB
+- **Features**:
+  - Text chunking
+  - Embedding generation
+  - Vector storage
+
+### LLM Service
+- **Purpose**: Query processing and response generation
+- **Tech Stack**: Transformers, sentence-transformers
+- **Features**:
+  - Multiple model support
+  - Prompt engineering
+  - Response generation
+  - Metrics collection
+  - Model switching
+
+### UI Service
+- **Purpose**: User interface for system interaction
+- **Tech Stack**: Flet/Tkinter
+- **Features**:
+  - Query interface
+  - Metrics visualization
+  - Response display
+  - Export capabilities
+
+## 📥 Data Pipeline
+
+### 1. Ingestion
+```python
+# Example: Web page ingestion
+from ingestion.web import WebIngester
+ingester = WebIngester()
+content = ingester.fetch("https://example.com")
+```
+
+### 2. Processing
+```python
+# Example: Text chunking
+from ingestion.chunking import TextChunker
+chunker = TextChunker(
+    chunk_size=1000,
+    chunk_overlap=200,
+    separator="\n"
+)
+chunks = chunker.split(content)
+```
+
+### 3. Embedding
+```python
+# Example: Vector generation
+from embeddings.vectorizer import Vectorizer
+vectorizer = Vectorizer(model="sentence-transformers/all-MiniLM-L6-v2")
+vectors = vectorizer.embed(chunks)
+```
+
+### 4. Query Processing
+```python
+# Example: RAG query
+from rag.query import process_query
+response, metrics = process_query(
+    user_query="What is RAG?",
+    model_name="google/flan-t5-large",
+    temperature=0.7,
+    max_tokens=200,
+    top_k=5
+)
+```
+
+## 📊 Metrics & Monitoring
+
+### Prometheus Metrics
+- Query latency
+- Token usage
+- Vector operations
+- Service health
+- Resource utilization
+
+### Custom RAG Metrics
+- Stage durations
+- Pipeline interactions
+- Success rates
+- Error tracking
+- Model performance
+
+### Export Formats
+- CSV exports
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Docker and Docker Compose
+- Python 3.11+
+- Poetry (for local development)
+
+### Quick Start
 ```bash
 # 1. Build
-docker compose build   # first run may take a while (PyPI wheels)
+docker compose build
+
 # 2. Launch
-docker compose up -d   # -d = detached
-# 3. Explore
-open http://localhost:8000   # Gateway REST (Swagger coming soon)
-open http://localhost:9090   # Prometheus
-open http://localhost:3000   # Grafana (admin/admin)
+docker compose up -d
+
+# 3. Access Services
+open http://localhost:8000   # API Gateway
 ```
 
-> **Tip**   The first build fetches big ML wheels (transformers, faiss-cpu). We increased `POETRY_HTTP_TIMEOUT=600` and `POETRY_HTTP_RETRIES=10` in every Dockerfile, but you can also add a PyPI mirror if your network is slow.
-
----
-
-## 🗂️ Repository Layout
-
-```
-API_Gateway/      – Gateway source, metrics bus, shared protos
-embeddings/       – Chunk + Embed service
-Ingestion/        – Raw-data ingestion service (gRPC flavour lives in Ingestion/grpc)
-LLM/              – Query / LLM service (LLM/RAG)
-UI/               – Optional GUI examples (Tkinter / Flet)
-docker-compose.yml
-prometheus.yml    – Scrape config
-```
-
----
-
-## 🧩 Micro-service Cheat-Sheet
-
-| Service | Tech | gRPC Port | REST / Metrics | Docker CMD |
-|---------|------|-----------|----------------|------------|
-| **API Gateway** | Python 3.11 / Flask | 50051 | 8000 | `python src/api_gateway/server.py` |
-| **Embeddings** | FastAPI (+ langchain, faiss) | 50052 | _TBD_ | `python -m rag.server` |
-| **Ingestion** | FastAPI (+ boto3) | 50053 | _TBD_ | `python -m grpc.server` |
-| **LLM** | Transformers, sentence-transformers | 50054 | _TBD_ | `python -m rag.main` |
-
-All containers are attached to the `rag-network` bridge so they can reach each other via `{service-name}:{port}`.
-
----
-
-## 📊 Metrics & Benchmarking
-
-1. **Prometheus-style** – every service exposes `/metrics` (prometheus-client).
-2. **Custom RAG metrics** – the Gateway wraps gRPC calls with decorators from `MetricsCollector` and writes detailed stage & pipeline CSVs under `API_Gateway/exports/`.
-3. **Dashboard** – Gateway serves a lightweight Flask blueprint at `/api/metrics` and `/api/benchmarks` which the UI or Grafana can embed.
-
-CSV headers:
-* `stage_metrics.csv` – component, stage, duration, throughput, success …
-* `population_benchmarks.csv`, `update_benchmarks.csv`, `query_benchmarks.csv`
-* `pipeline_interactions.csv` – cross-component timings
-
----
-
-## 🚀 Local Development
-
+### Development Setup
 ```bash
-# Gateway example
-cd API_Gateway
-poetry install            # installs deps into host machine
-poetry run pytest -v      # run unit tests
-poetry run python generate_grpc.py   # regenerate stubs after editing protos
+# Install dependencies
+cd <service-directory>
+poetry install
+
+# Run tests
+poetry run pytest
+
+# Start service
+# For API Gateway:
+poetry run python -m api_gateway.server
+
+# For UI:
+cd UI
+poetry run python -m rag.flet_gui_connected
+
+# For LLM Service:
+cd LLM
+poetry run python -m rag.main
+
+# For Embeddings Service:
+cd embeddings
+poetry run python -m rag.server
+
+# For Ingestion Service:
+cd Ingestion
+poetry run python -m grpc.server
 ```
 
-### Common Make targets (optional)
-Add this to your personal `~/.bashrc` if desired:
-```bash
-alias dc="docker compose"
-make build   # → docker compose build
-make up      # → docker compose up -d
-make logs    # → docker compose logs -f --tail=50
+## 📝 Service-Specific Documentation
+
+Each service has its own README with detailed information:
+- `API_Gateway/README.md` - Gateway configuration and metrics
+- `Ingestion/README.md` - Data ingestion pipeline
+- `embeddings/README.md` - Vector storage and search
+- `LLM/README.md` - Model management and prompting
+- `UI/README.md` - Interface customization
+
+## 🔧 Configuration
+
+### Environment Variables
+- `DEFAULT_LLM_MODEL` - Default language model
+- `VECTOR_DB_TYPE` - Vector database selection
+- `API_GATEWAY_PORT` - Gateway port (default: 8000)
+- `PROMETHEUS_PORT` - Metrics port (default: 9090)
+
+### Model Configuration
+```python
+MODEL_CONFIG = {
+    "default_model": "google/flan-t5-large",
+    "default_temperature": 0.7,
+    "default_max_tokens": 200,
+    "default_top_k": 5
+}
 ```
 
----
+## 🤝 Contributing
 
-## 📝 Per-service READMEs
-
-Each sub-folder contains its own README with:
-* Purpose & responsibilities
-* gRPC API snippet
-* How to run tests / server locally
-* Environment variables
-
----
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Update documentation
+5. Submit a pull request
 
 ## 📜 License
 MIT
+
+# RAG System with Modular Prompt Engineering
+
+This project implements a Retrieval-Augmented Generation (RAG) system with a focus on modular and extensible prompt engineering.
+
+## Architecture
+
+The system is built with a microservices architecture:
+- API Gateway: Entry point for all requests
+- LLM Service: Handles language model interactions
+- Embeddings Service: Manages vector embeddings
+- UI: Web interface for interacting with the system
+
+## Prompt Engineering
+
+### Prompt Management System
+
+The system uses a dedicated `PromptManager` class to handle all aspects of prompt engineering:
+
+```python
+from rag.prompt_manager import prompt_manager
+
+# Format a prompt for a specific model
+formatted_prompt = prompt_manager.format_prompt(
+    query="What is RAG?",
+    model_name="google/flan-t5-large"
+)
+```
+
+### Model-Specific Templates
+
+The system supports different prompt templates for various model types:
+
+1. **Instruct Models** (e.g., Mistral, Llama):
+   ```python
+   "<s>[INST] {query} [/INST]"
+   ```
+
+2. **Flan-T5 Models**:
+   ```python
+   "Question: {query}\nAnswer:"
+   ```
+
+3. **Default Template**:
+   ```python
+   "{query}"
+   ```
+
+### Query Validation
+
+The system includes robust query validation:
+- Empty query detection
+- Length limits (1000 characters)
+- Model-specific requirements
+
+### Model Requirements
+
+Each model's capabilities are tracked:
+- Maximum input length
+- Streaming support
+- System prompt requirements
+- Default parameters (temperature, max_tokens, top_k)
+
+## Usage
+
+### Basic Query
+
+```python
+from rag.query import process_query
+
+response, metrics = process_query(
+    user_query="What is RAG?",
+    model_name="google/flan-t5-large",
+    temperature=0.7,
+    max_tokens=200,
+    top_k=5
+)
+```
+
+### Metrics
+
+The system tracks various metrics:
+- Vector search latency
+- LLM processing latency
+- Total processing time
+- Tokens used
+- Model-specific requirements
+
+## Configuration
+
+Model settings are configured in `config.py`:
+```python
+MODEL_CONFIG = {
+    "default_model": "google/flan-t5-large",
+    "default_temperature": 0.7,
+    "default_max_tokens": 200,
+    "default_top_k": 5,
+    "supported_models": [
+        "google/flan-t5-large",
+        "google/flan-t5-base",
+        "google/flan-t5-small"
+    ]
+}
+```
+
+## Adding New Models
+
+To add a new model:
+
+1. Add the model to `MODEL_CONFIG["supported_models"]`
+2. Add appropriate prompt template in `prompt_manager.py`
+3. Update model requirements in `get_model_requirements()`

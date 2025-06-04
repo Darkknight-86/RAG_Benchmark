@@ -1,16 +1,14 @@
 """
 API Gateway Server - Main server module for the API Gateway.
-
-This module sets up and runs the API Gateway server, including the metrics
-collection and dashboard functionality.
 """
 
 import logging
-import atexit
+import os
 from flask import Flask
+from dotenv import load_dotenv
+from .routes import register_routes
 
-from .metrics import MetricsCollector, RAGBenchmarks, MetricsDashboard
-from .routes import api
+load_dotenv()
 
 class APIGatewayServer:
     """Main API Gateway server class."""
@@ -19,30 +17,17 @@ class APIGatewayServer:
         self.logger = logging.getLogger(__name__)
         self.app = Flask(__name__)
 
-        # Initialize metrics components
-        self.benchmarks = RAGBenchmarks()
-        self.collector = MetricsCollector(self.benchmarks)
-        self.dashboard = MetricsDashboard(self.benchmarks, self.collector)
+        # Configure the app
+        self.app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-        # Register the blueprints
-        self.app.register_blueprint(api, url_prefix='/api')
-        self.app.register_blueprint(self.dashboard.blueprint, url_prefix='/api')
+        # Register routes
+        register_routes(self.app)
 
         # Set up logging
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
-
-        # Register shutdown handler
-        atexit.register(self._shutdown)
-
-    def _shutdown(self):
-        """Clean up resources when the server shuts down."""
-        self.logger.info("Shutting down API Gateway server...")
-        # Stop all active metric collections
-        for service in list(self.collector.active_services):
-            self.collector.stop_collection_for_service(service)
 
     def run(self, host: str = '0.0.0.0', port: int = 8000, debug: bool = False):
         """Run the API Gateway server."""
@@ -54,6 +39,10 @@ def create_app():
     server = APIGatewayServer()
     return server.app
 
+def main():
+    app = create_app()
+    port = int(os.getenv('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)
+
 if __name__ == '__main__':
-    server = APIGatewayServer()
-    server.run()
+    main()
