@@ -4,10 +4,24 @@ API Routes for the RAG Gateway.
 This module defines REST endpoints that proxy requests to the gRPC microservices.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify  # type: ignore[import-not-found]
 from .clients import LLMClient, EmbeddingsClient, IngestionClient
+from .metrics import metrics_collector
+from .grpc import rag_service_pb2_grpc as pb2_grpc
 import logging
+import time
+import grpc
+import os
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Create blueprint for API routes
@@ -21,45 +35,100 @@ def query():
     Expected JSON body:
     {
         "query": "Your question here",
-        "top_k": 5  # optional, defaults to 5
+        "model_name": "google/flan-t5-small",  # optional
+        "top_k": 5,              # optional
+        "temperature": 0.7,      # optional
+        "max_tokens": 200        # optional
     }
     """
+    start_time = time.time()
+    logger.info("Received query request")
+
     try:
         data = request.get_json()
         if not data or 'query' not in data:
+            logger.error("Missing query field in request")
             return jsonify({"error": "Query field is required"}), 400
 
+        # Get parameters with defaults
         query_text = data['query']
-        top_k = data.get('top_k', 5)
+        model_name = data.get('model_name', os.getenv("DEFAULT_LLM_MODEL", "google/flan-t5-small"))
+        top_k = data.get('top_k', int(os.getenv("DEFAULT_TOP_K", "5")))
+        temperature = data.get('temperature', float(os.getenv("DEFAULT_TEMPERATURE", "0.7")))
+        max_tokens = data.get('max_tokens', int(os.getenv("DEFAULT_MAX_TOKENS", "200")))
 
-        logger.info(f"Processing query: {query_text}")
+        logger.info(f"Processing query with parameters: model={model_name}, temp={temperature}, max_tokens={max_tokens}, top_k={top_k}")
 
         # Use the LLM client to process the query
+        logger.info("Initializing LLM client")
         with LLMClient() as client:
-            response = client.query(query_text, top_k)
+            logger.info("Sending query to LLM service")
+            response = client.query(
+                query_text=query_text,
+                model_name=model_name,
+                top_k=top_k,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            logger.info("Received response from LLM service")
+
+            total_time = time.time() - start_time
+
+            # Record metrics
+            logger.info("Recording metrics")
+            metrics_collector.record_query(
+                query=query_text,
+                response=response.answer,
+                vector_latency=response.metrics.vector_latency,
+                llm_latency=response.metrics.llm_latency,
+                total_time=total_time,
+                tokens_used=response.metrics.tokens_used,
+                vector_store_type="unknown",  # Not available in response
+                status="success"
+            )
 
             # Convert gRPC response to JSON
             result = {
-                "response": response.response,
-                "sources": [
-                    {
-                        "content": source.content,
-                        "score": source.score,
-                        "metadata": dict(source.metadata)
-                    }
-                    for source in response.sources
-                ],
-                "metadata": {
-                    "latency": response.metadata.latency,
-                    "tokens_used": response.metadata.tokens_used,
-                    "additional": dict(response.metadata.additional_metadata)
+                "response": response.answer,
+                "metrics": {
+                    "vector_latency": response.metrics.vector_latency,
+                    "llm_latency": response.metrics.llm_latency,
+                    "total_time": total_time,
+                    "tokens_used": response.metrics.tokens_used,
+                    "model_name": response.metrics.model_name,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "top_k": top_k
                 }
             }
 
+            logger.info(f"Query completed in {total_time:.2f} seconds")
             return jsonify(result), 200
 
     except Exception as e:
-        logger.error(f"Error processing query: {str(e)}")
+        logger.error(f"Error processing query: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/metrics/export', methods=['GET'])
+def export_metrics():
+    """Export collected metrics to a file."""
+    try:
+        format = request.args.get('format', 'csv')
+        filepath = metrics_collector.export_metrics(format)
+        return jsonify({
+            "status": "success",
+            "filepath": filepath
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/metrics/summary', methods=['GET'])
+def metrics_summary():
+    """Get a summary of collected metrics."""
+    try:
+        summary = metrics_collector.get_metrics_summary()
+        return jsonify(summary), 200
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @api.route('/ingest', methods=['POST'])
@@ -98,3 +167,7 @@ def ingest():
 def health():
     """Health check endpoint."""
     return jsonify({"status": "healthy"}), 200
+
+def register_routes(app):
+    """Register all API routes with the Flask application."""
+    app.register_blueprint(api, url_prefix='/api')

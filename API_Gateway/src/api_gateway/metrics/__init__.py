@@ -1,110 +1,126 @@
 """
-RAG Metrics and Benchmarking System.
+RAG Metrics Collection System.
 
-This module provides comprehensive metrics collection and benchmarking capabilities
-for RAG pipeline components, focusing on:
-- Population pipeline (A2 → A3 → B2 → B3 → B4)
-- Update pipeline (Incremental B4 operations)
-- Query pipeline (C3 → D1 → D2 → D3)
+This module provides lightweight metrics collection for RAG pipeline components.
 """
 
-from .benchmarks import (
-    # Core benchmarking
-    RAGBenchmarks,
+from typing import Any, List, Dict, Optional
+from dataclasses import dataclass
+from datetime import datetime
+import json
+import os
+import csv
 
-    # Models
-    StageMetric,
-    PopulationPipelineBenchmark,
-    UpdatePipelineBenchmark,
-    QueryPipelineBenchmark,
+@dataclass
+class QueryMetrics:
+    timestamp: datetime
+    query: str
+    response: str
+    vector_latency: float
+    llm_latency: float
+    total_time: float
+    tokens_used: int
+    vector_store_type: str
+    status: str
+    error: Optional[str] = None
 
-    # Configuration
-    PERFORMANCE_TARGETS,
-    PIPELINE_TARGETS,
-    BENCHMARK_SETTINGS,
+class MetricsCollector:
+    def __init__(self, export_dir: str = "API_Gateway/exports"):
+        self.export_dir = export_dir
+        self.metrics_buffer: List[QueryMetrics] = []
+        os.makedirs(export_dir, exist_ok=True)
 
-    # Utilities
-    measure_time,
-    measure_memory,
-    calculate_throughput,
-    format_duration,
-    get_system_metrics,
-    check_resource_limits,
-    retry_with_backoff,
-    timestamp_to_iso
-)
+    def record_query(
+        self,
+        query: str,
+        response: str,
+        vector_latency: float,
+        llm_latency: float,
+        total_time: float,
+        tokens_used: int,
+        vector_store_type: str,
+        status: str = "success",
+        error: Optional[str] = None
+    ):
+        """Record metrics for a single query."""
+        metrics = QueryMetrics(
+            timestamp=datetime.now(),
+            query=query,
+            response=response,
+            vector_latency=vector_latency,
+            llm_latency=llm_latency,
+            total_time=total_time,
+            tokens_used=tokens_used,
+            vector_store_type=vector_store_type,
+            status=status,
+            error=error
+        )
+        self.metrics_buffer.append(metrics)
 
-__all__ = [
-    # Core benchmarking
-    'RAGBenchmarks',
+    def export_metrics(self, format: str = "csv") -> str:
+        """Export collected metrics to CSV (default) or JSON."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # Models
-    'StageMetric',
-    'PopulationPipelineBenchmark',
-    'UpdatePipelineBenchmark',
-    'QueryPipelineBenchmark',
+        if format == "csv":
+            filename = f"rag_metrics_{timestamp}.csv"
+            filepath = os.path.join(self.export_dir, filename)
 
-    # Configuration
-    'PERFORMANCE_TARGETS',
-    'PIPELINE_TARGETS',
-    'BENCHMARK_SETTINGS',
+            fieldnames = [
+                "timestamp",
+                "query",
+                "response",
+                "vector_latency",
+                "llm_latency",
+                "total_time",
+                "tokens_used",
+                "vector_store_type",
+                "status",
+                "error",
+            ]
 
-    # Utilities
-    'measure_time',
-    'measure_memory',
-    'calculate_throughput',
-    'format_duration',
-    'get_system_metrics',
-    'check_resource_limits',
-    'retry_with_backoff',
-    'timestamp_to_iso'
-]
+            with open(filepath, "w", newline="") as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                for m in self.metrics_buffer:
+                    writer.writerow({k: getattr(m, k) for k in fieldnames})
 
-__all__ += ['MetricsCollector', 'MetricsDashboard']
+        elif format == "json":
+            filename = f"rag_metrics_{timestamp}.json"
+            filepath = os.path.join(self.export_dir, filename)
 
-# ---------------------------------------------------------------------------
-# Lightweight placeholders to let the API Gateway boot. Replace with full
-# implementation from metrics.collector and metrics.dashboard as soon as
-# those modules are stabilised.
-# ---------------------------------------------------------------------------
+            with open(filepath, "w") as f:
+                json.dump([vars(m) for m in self.metrics_buffer], f, default=str, indent=2)
+        else:
+            raise ValueError(f"Unsupported export format: {format}")
 
-from typing import Any, List
-from flask import Blueprint, jsonify
+        return filepath
 
+    def get_metrics_summary(self) -> Dict:
+        """Get a summary of collected metrics."""
+        if not self.metrics_buffer:
+            return {
+                "total_queries": 0,
+                "average_latencies": {},
+                "total_tokens": 0
+            }
 
-class MetricsCollector:  # pragma: no cover – minimal stub
-    """Minimal stub so API Gateway can start.
+        total_queries = len(self.metrics_buffer)
+        total_tokens = sum(m.tokens_used for m in self.metrics_buffer)
 
-    A real implementation should live in metrics.collector and handle async
-    collection / Prometheus registry sharing.  For the MVP we just record an
-    *active_services* set so the dashboard route works.
-    """
+        avg_vector_latency = sum(m.vector_latency for m in self.metrics_buffer) / total_queries
+        avg_llm_latency = sum(m.llm_latency for m in self.metrics_buffer) / total_queries
+        avg_total_time = sum(m.total_time for m in self.metrics_buffer) / total_queries
 
-    def __init__(self, benchmarks: 'RAGBenchmarks') -> None:
-        self.benchmarks = benchmarks
-        self.active_services: set[str] = set()
+        return {
+            "total_queries": total_queries,
+            "average_latencies": {
+                "vector_search": avg_vector_latency,
+                "llm_processing": avg_llm_latency,
+                "total": avg_total_time
+            },
+            "total_tokens": total_tokens,
+            "vector_store_types": list(set(m.vector_store_type for m in self.metrics_buffer))
+        }
 
-    # simple API used by server.py in shutdown
-    def stop_collection_for_service(self, name: str) -> None:
-        self.active_services.discard(name)
-
-    # dashboard helper
-    def list_active(self) -> List[str]:
-        return list(self.active_services)
-
-
-class MetricsDashboard:  # pragma: no cover – minimal stub
-    """Flask blueprint exposing two basic endpoints."""
-
-    def __init__(self, benchmarks: 'RAGBenchmarks', metrics_collector: MetricsCollector):
-        bp = Blueprint('metrics', __name__)
-
-        @bp.route('/metrics/active', methods=['GET'])
-        def get_active():
-            return jsonify(metrics_collector.list_active())
-
-        @bp.route('/healthz', methods=['GET'])
-        def healthz():
-            return 'OK', 200
-
-        self.blueprint = bp
+# Global instance
+metrics_collector = MetricsCollector()

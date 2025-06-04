@@ -8,6 +8,11 @@ from embedder import SpecterEmbedder
 from dotenv import load_dotenv
 import os
 import boto3
+import logging
+import time
+from typing import List
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 app = FastAPI()
 # Load environment variables
@@ -30,6 +35,50 @@ vector_stores = [
     #ClickHouseAdapter(),
     OpenSearchAdapter()
 ] # list[VectorStoreAdapter]
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize the model
+logger.info("Initializing sentence transformer model")
+try:
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    logger.info("Successfully loaded sentence transformer model")
+except Exception as e:
+    logger.error(f"Failed to load sentence transformer model: {str(e)}", exc_info=True)
+    raise
+
+def get_embeddings(text: str) -> List[float]:
+    """
+    Generate embeddings for the given text.
+
+    Args:
+        text: The input text to generate embeddings for
+
+    Returns:
+        List of float values representing the embedding
+    """
+    logger.info(f"Generating embeddings for text: {text[:100]}...")
+    start_time = time.time()
+
+    try:
+        # Generate embeddings
+        embedding = model.encode(text)
+
+        # Convert to list of floats
+        result = embedding.tolist()
+
+        duration = time.time() - start_time
+        logger.info(f"Generated embeddings of dimension {len(result)} in {duration:.2f}s")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error generating embeddings: {str(e)}", exc_info=True)
+        raise
 
 '''
 Adds all data from AWS S3 to the vector databases

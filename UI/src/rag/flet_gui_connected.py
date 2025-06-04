@@ -1,26 +1,33 @@
 import flet as ft
+import webbrowser
 import requests
 import time
 import csv
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # API Gateway URL
 API_BASE_URL = "http://localhost:8000/api"
 
 def call_api_gateway(prompt):
     """Call the API Gateway query endpoint and return response with timing."""
-    start_time = time.time()
-
     try:
-        # Make the API call
+        # Make the API call with environment variables
         response = requests.post(
             f"{API_BASE_URL}/query",
-            json={"query": prompt, "top_k": 5},
+            json={
+                "query": prompt,
+                "temperature": float(os.getenv("DEFAULT_TEMPERATURE", "0.7")),
+                "max_tokens": int(os.getenv("DEFAULT_MAX_TOKENS", "200")),
+                "top_k": int(os.getenv("DEFAULT_TOP_K", "5"))
+            },
             headers={"Content-Type": "application/json"},
-            timeout=30
+            timeout=90
         )
-
-        total_time = time.time() - start_time
 
         if response.status_code == 200:
             data = response.json()
@@ -28,22 +35,28 @@ def call_api_gateway(prompt):
             # Extract response text
             response_text = data.get("response", "No response received")
 
-            # Extract metadata
-            metadata = data.get("metadata", {})
-            vector_latency = metadata.get("latency", 0)
-            tokens_used = metadata.get("tokens_used", 0)
+            # Extract metrics from API Gateway
+            metrics = data.get("metrics", {})
+            vector_latency = metrics.get("vector_latency", 0)
+            llm_latency = metrics.get("llm_latency", 0)
+            total_time = metrics.get("total_time", 0)
+            tokens_used = metrics.get("tokens_used", 0)
+            model_name = metrics.get("model_name", "unknown")
+            temperature = metrics.get("temperature", 0)
+            max_tokens = metrics.get("max_tokens", 0)
+            top_k = metrics.get("top_k", 0)
 
             # Extract sources
             sources = data.get("sources", [])
 
-            # Format the response with sources
+            # Format the response with sources only
             if sources:
                 response_text += "\n\n--- Sources ---\n"
                 for i, source in enumerate(sources, 1):
                     response_text += f"\n{i}. Score: {source.get('score', 'N/A')}\n"
                     response_text += f"   Content: {source.get('content', 'N/A')[:200]}...\n"
 
-            return response_text, vector_latency, total_time - vector_latency, total_time, tokens_used
+            return response_text, vector_latency, llm_latency, total_time, tokens_used, model_name, temperature, max_tokens, top_k
 
         else:
             error_msg = f"API Error: {response.status_code}"
@@ -53,14 +66,14 @@ def call_api_gateway(prompt):
                     error_msg += f" - {error_data.get('error', response.text)}"
                 except:
                     error_msg += f" - {response.text}"
-            return error_msg, 0, 0, total_time, 0
+            return error_msg, 0, 0, 0, 0, "unknown", 0, 0, 0
 
     except requests.exceptions.Timeout:
-        return "Error: Request timed out", 0, 0, time.time() - start_time, 0
+        return "Error: Request timed out", 0, 0, 0, 0, "unknown", 0, 0, 0
     except requests.exceptions.ConnectionError:
-        return "Error: Could not connect to API Gateway. Is it running?", 0, 0, time.time() - start_time, 0
+        return "Error: Could not connect to API Gateway. Is it running?", 0, 0, 0, 0, "unknown", 0, 0, 0
     except Exception as e:
-        return f"Error: {str(e)}", 0, 0, time.time() - start_time, 0
+        return f"Error: {str(e)}", 0, 0, 0, 0, "unknown", 0, 0, 0
 
 def main(page: ft.Page):
     print("Starting application...")
@@ -68,8 +81,6 @@ def main(page: ft.Page):
     page.bgcolor = "white"
     page.padding = 30
     page.vertical_alignment = ft.MainAxisAlignment.START
-
-    metrics_log = []
 
     # --- Components ---
     response_list = ft.ListView(
@@ -107,41 +118,31 @@ def main(page: ft.Page):
             return
 
         # User message
-        response_list.controls.append(ft.Text("You", size=12, italic=True, color="#878787"))
+        response_list.controls.append(ft.Text("You", size=12, italic=True, color="#001F3F"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(prompt, size=14, selectable=True, color="#878787"),
+            content=ft.Text(prompt, size=14, selectable=True, color="#001F3F"),
             bgcolor="#d1c4e9",  # Light purple
             padding=10,
             border_radius=8
         ))
 
         # Call the API
-        response, vector_latency, llm_latency, total_time, tokens = call_api_gateway(prompt)
+        response, vector_latency, llm_latency, total_time, tokens, model_name, temperature, max_tokens, top_k = call_api_gateway(prompt)
 
         # AI response
-        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="#878787"))
+        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="#001F3F"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(response, size=14, selectable=True, color="#878787"),
+            content=ft.Text(response, size=14, selectable=True, color="#001F3F"),
             bgcolor="#f2f2f2",  # Light gray
             padding=10,
             border_radius=8
         ))
 
-        # Log metrics
-        metrics_log.append({
-            "timestamp": datetime.now().isoformat(),
-            "prompt": prompt,
-            "response": response[:200] + "..." if len(response) > 200 else response,
-            "vector_latency": vector_latency,
-            "llm_latency": llm_latency,
-            "total_time": total_time,
-            "tokens_used": tokens
-        })
-
-        # Update metrics display
+        # Update metrics display with model info
         latency_text.value = (
-            f"Vector Latency: {vector_latency:.3f}s | "
-            f"LLM Latency: {llm_latency:.3f}s | "
+            f"Model: {model_name} | "
+            f"Vector: {vector_latency:.3f}s | "
+            f"LLM: {llm_latency:.3f}s | "
             f"Total: {total_time:.3f}s | "
             f"Tokens: {tokens}"
         )
@@ -149,26 +150,27 @@ def main(page: ft.Page):
         query_input.value = ""
         page.update()
 
-    def export_csv(e=None):
-        if not metrics_log:
-            latency_text.value = "No data to export."
-            page.update()
-            return
-
-        filename = f"rag_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        with open(filename, mode="w", newline="") as file:
-            fieldnames = ["timestamp", "prompt", "response", "vector_latency", "llm_latency", "total_time", "tokens_used"]
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(metrics_log)
-
-        latency_text.value = f"Exported to {filename}"
+    def export_metrics(e=None):
+        """Export metrics from API Gateway."""
+        try:
+            response = requests.get(f"{API_BASE_URL}/metrics/export")
+            if response.status_code == 200:
+                data = response.json()
+                latency_text.value = f"Exported to {data['filepath']}"
+            else:
+                latency_text.value = "Error exporting metrics"
+        except Exception as e:
+            latency_text.value = f"Error: {str(e)}"
         page.update()
 
     def clear_chat(e=None):
         response_list.controls.clear()
         latency_text.value = ""
         page.update()
+
+    def open_grafana(e=None):
+        grafana_url = "http://localhost:3000/d/your-dashboard-id"  # Replace with your actual dashboard URL
+        webbrowser.open(grafana_url)
 
     # --- Dialog Pop up Setup ---
     info_dialog = ft.AlertDialog(
@@ -234,7 +236,7 @@ def main(page: ft.Page):
         label="Enter your query...",
         border_radius=10,
         border_color="#CCCCCC",
-        color="#878787",
+        color="#001F3F",
         expand=True,
         on_submit=query_ai,
         suffix=ft.IconButton(
@@ -265,16 +267,24 @@ def main(page: ft.Page):
 
     # Bottom Buttons
     export_button = ft.ElevatedButton(
-        "Export to CSV",
-        on_click=export_csv,
+        "Export Metrics",
+        on_click=export_metrics,
         style=ft.ButtonStyle(bgcolor="#001F3F", color="white")
     )
     clear_button = ft.OutlinedButton("Clear Chat", on_click=clear_chat)
 
+    grafana_button = ft.ElevatedButton(
+        "View Grafana Dashboard",
+        on_click=open_grafana,
+        style=ft.ButtonStyle(bgcolor="#001F3F", color="white")
+    )
+
     button_row = ft.Row([
+        grafana_button,
         export_button,
         clear_button
     ], spacing=20, alignment=ft.MainAxisAlignment.START)
+
 
     # Page Layout
     page.add(
