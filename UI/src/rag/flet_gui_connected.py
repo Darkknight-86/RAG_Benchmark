@@ -107,9 +107,9 @@ def main(page: ft.Page):
             return
 
         # User message
-        response_list.controls.append(ft.Text("You", size=12, italic=True, color="#878787"))
+        response_list.controls.append(ft.Text("You", size=12, italic=True, color="#001F3F"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(prompt, size=14, selectable=True, color="#878787"),
+            content=ft.Text(prompt, size=14, selectable=True, color="#001F3F"),
             bgcolor="#d1c4e9",  # Light purple
             padding=10,
             border_radius=8
@@ -119,9 +119,9 @@ def main(page: ft.Page):
         response, vector_latency, llm_latency, total_time, tokens = call_api_gateway(prompt)
 
         # AI response
-        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="#878787"))
+        response_list.controls.append(ft.Text("Vectra", size=12, italic=True, color="#001F3F"))
         response_list.controls.append(ft.Container(
-            content=ft.Text(response, size=14, selectable=True, color="#878787"),
+            content=ft.Text(response, size=14, selectable=True, color="#001F3F"),
             bgcolor="#f2f2f2",  # Light gray
             padding=10,
             border_radius=8
@@ -234,7 +234,7 @@ def main(page: ft.Page):
         label="Enter your query...",
         border_radius=10,
         border_color="#CCCCCC",
-        color="#878787",
+        color="#001F3F",
         expand=True,
         on_submit=query_ai,
         suffix=ft.IconButton(
