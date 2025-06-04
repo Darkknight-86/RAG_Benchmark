@@ -49,5 +49,5 @@ def on_new_msg(ws, msg):
 
 yliveticker.YLiveTicker(
     on_ticker=on_new_msg,
-    ticker_names=["CBA.AX", "BHP.AX", "WBC.AX", "NAB.AX", "ANZ.AX"]
+    ticker_names = ["QAN.AX", "WOW.AX", "COL.AX", "TLS.AX", "JBH.AX"]
 )
