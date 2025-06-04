@@ -3,15 +3,17 @@ from Adapters.CassandraAdapter import CassandraAdapter
 from Adapters.ClickHouseAdapter import ClickHouseAdapter
 from Adapters.OpenSearchAdapter import OpenSearchAdapter
 from Adapters.PostgresAdapter import PostgresAdapter
-from chunker import SpecterChunker
-from embedder import SpecterEmbedder
+from rag.utils import try_parse_json_or_text
+from specterChunker import SpecterChunker
+from specterEmbedder import SpecterEmbedder
+from stockChunker import StockChunker
+from stockEmbedder import StockEmbedder
 from dotenv import load_dotenv
 import os
 import boto3
 import logging
 import time
 from typing import List
-import numpy as np
 from sentence_transformers import SentenceTransformer
 
 app = FastAPI()
@@ -27,8 +29,8 @@ s3_client = boto3.client(
 bucket_name = 'ragproject-store'
 
 # Shared chunker, embedder, and vector store adapter list
-chunker = SpecterChunker()
-embedder = SpecterEmbedder()
+chunker = StockChunker()
+embedder = StockEmbedder()
 vector_stores = [
     CassandraAdapter(),
     PostgresAdapter(),
@@ -107,7 +109,8 @@ async def add_all_data():
             try:
                 # Get the single file
                 s3_object = s3_client.get_object(Bucket=bucket_name, Key=key)
-                text_data = s3_object['Body'].read().decode('utf-8')
+                raw_data = s3_object['Body'].read().decode('utf-8')
+                text_data = try_parse_json_or_text(raw_data)
 
                 # Chunk and embed this file
                 chunks = chunker.chunk([text_data])
@@ -141,7 +144,8 @@ async def add_single_data(object_key: str):
 
     try:
         s3_object = s3_client.get_object(Bucket=bucket_name, Key=object_key)
-        text_data = s3_object['Body'].read().decode('utf-8')
+        raw_data = s3_object['Body'].read().decode('utf-8')
+        text_data = try_parse_json_or_text(raw_data)
 
     except Exception as e:
         return {"message": f"Error retrieving object: {str(e)}"}

@@ -1,6 +1,6 @@
 import boto3
-from embeddings.src.rag.chunker import SpecterChunker
-from embeddings.src.rag.embedder import SpecterEmbedder
+from embeddings.src.rag.specterChunker import SpecterChunker
+from embeddings.src.rag.specterEmbedder import SpecterEmbedder
 from dotenv import load_dotenv
 import os
 
