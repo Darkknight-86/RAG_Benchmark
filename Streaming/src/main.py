@@ -9,7 +9,7 @@ def on_new_msg(ws, msg):
     
     print("round(xxx, " + str(msg['priceHint']) + ")")
     
-    pre_s3_format = {
+    pre_blob_format = {
         'security': str(msg['id']),
         'price': round(msg['price'], msg['priceHint']),
         'changePercent': round(msg['changePercent'], int(msg['priceHint'])),
@@ -20,9 +20,9 @@ def on_new_msg(ws, msg):
     }
     
     file_name = str(msg['id']) + "-" + str(round(time.time())) + ".json"
-    helpers.upload_to_s3(file_name, pre_s3_format)
+    helpers.upload_to_blob(file_name, pre_blob_format)
     
-    print("[DEBUG] inserted 1 record to S3, w/ title of " + file_name)
+    print("[DEBUG] inserted 1 record to Azure Blob Storage, w/ title of " + file_name)
 
 # {
 #     'id': 'WBC.AX',
@@ -44,7 +44,7 @@ def on_new_msg(ws, msg):
 # quoteType: should always be 8 for equity (stock)
 
 
-# Format that will be uploaded to Amazon S3:
+# Format that will be uploaded to Azure Blob Storage:
 
 
 yliveticker.YLiveTicker(

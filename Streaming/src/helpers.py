@@ -5,14 +5,10 @@ import pytz
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+from config import AZURE_CONNECTION_STRING, AZURE_CONTAINER_NAME
 
 env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=env_path)
-
-
-# Azure configuration - these should be loaded from environment variables
-AZURE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-AZURE_CONTAINER_NAME = os.getenv('AZURE_BLOB_NAME')
 
 # Initialize blob service client
 blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
@@ -98,7 +94,7 @@ def is_asx_open():
         }
 
 
-def upload_to_s3(file_name, contents):
+def upload_to_blob(file_name, contents):
     """
     Upload file contents to Azure Blob Storage (renamed from S3 for compatibility).
     
