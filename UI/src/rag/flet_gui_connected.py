@@ -1,5 +1,4 @@
 import flet as ft
-import webbrowser
 import requests
 import time
 import csv
@@ -168,10 +167,6 @@ def main(page: ft.Page):
         latency_text.value = ""
         page.update()
 
-    def open_grafana(e=None):
-        grafana_url = "http://localhost:3000/d/your-dashboard-id"  # Replace with your actual dashboard URL
-        webbrowser.open(grafana_url)
-
     # --- Dialog Pop up Setup ---
     info_dialog = ft.AlertDialog(
         modal=True,
@@ -273,14 +268,7 @@ def main(page: ft.Page):
     )
     clear_button = ft.OutlinedButton("Clear Chat", on_click=clear_chat)
 
-    grafana_button = ft.ElevatedButton(
-        "View Grafana Dashboard",
-        on_click=open_grafana,
-        style=ft.ButtonStyle(bgcolor="#001F3F", color="white")
-    )
-
     button_row = ft.Row([
-        grafana_button,
         export_button,
         clear_button
     ], spacing=20, alignment=ft.MainAxisAlignment.START)
