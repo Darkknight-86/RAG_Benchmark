@@ -1,41 +1,64 @@
-[project]
+[tool.poetry]
 name = "rag"
 version = "0.1.0"
-description = ""
+description = "RAG system for stock data"
 authors = [
-    {name = "Darkknight-86", email = "bewick.j@northeastern.edu"}
+    "Darkknight-86 <bewick.j@northeastern.edu>"
 ]
 readme = "README.md"
-requires-python = ">=3.9,<3.13"
-dependencies = [
-    "fastapi (>=0.115.12,<0.116.0)",
-    "uvicorn (>=0.34.2,<0.35.0)",
-    "boto3 (>=1.38.24,<2.0.0)",
-    "langchain (>=0.3.25,<0.4.0)",
-    "clickhouse-connect (>=0.8.17,<0.9.0)",
-    "grpcio (>=1.62.0,<2.0.0)",
-    "grpcio-tools (>=1.62.0,<2.0.0)",
-    "protobuf (>=4.25.3,<5.0.0)",
-    "dotenv (>=0.9.9,<0.10.0)",
-    "python-dotenv (>=1.0.0,<2.0.0)",
-    "prometheus-client (>=0.20.0,<1.0.0)",
-    "psycopg2-binary (>=2.9.9,<3.0.0)",
-    "pgvector (>=0.2.3,<0.3.0)",
-    "numpy (>=1.24.0,<2.0.0)",
-    "sentence-transformers (>=4.1.0,<5.0.0)",
-    "torch (>=2.2.0,<3.0.0)",
-    "transformers (>=4.38.0,<5.0.0)",
-    "azure-storage-blob (>=12.25.1,<13.0.0)",
-    "yliveticker (>=0.3.0,<0.4.0)",
-    "nltk (>=3.8.1,<4.0.0)"
-]
-
-[tool.poetry]
 packages = [{include = "rag", from = "src"}]
 
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.104.1"
+uvicorn = "^0.24.0"
+boto3 = "^1.29.3"
+clickhouse-connect = "^0.6.0"
+python-dotenv = "^1.0.0"
+sentence-transformers = "^2.2.2"
+langchain = "0.1.0"
+langchain-core = "0.1.8"
+langchain-community = "0.0.10"
+numpy = "1.24.3"
+pandas = "2.0.3"
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.1"
+httpx = "^0.25.1"
+langsmith = ">=0.0.63,<0.1.0"
+yliveticker = "^0.3.0"
+protobuf = "3.20.3"
+
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.4.0"
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.1"
+pytest-cov = "^4.1.0"
+black = "^23.12.1"
+isort = "^5.13.2"
+mypy = "^1.8.0"
+ruff = "^0.2.1"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "B", "I"]
+ignore = []

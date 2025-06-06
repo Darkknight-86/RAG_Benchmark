@@ -5,8 +5,12 @@ import asyncio
 import logging
 import yliveticker
 import sys
+from queue import Queue
 
-from rag.streaming import StreamProcessor
+from rag.streaming import StreamingProcessor
+from rag.stockChunker import StockChunker
+from rag.stockEmbedder import StockEmbedder
+from rag.Adapters.ClickHouseAdapter import ClickHouseAdapter
 
 __all__ = ["main"]
 
@@ -19,14 +23,23 @@ logger = logging.getLogger(__name__)
 
 async def main():
     try:
-        logger.info("Initializing stream processor...")
+        logger.info("Initializing components...")
+        # Initialize components
+        chunker = StockChunker()
+        embedder = StockEmbedder()
+        clickhouse = ClickHouseAdapter()
+
         # Initialize stream processor
-        stream_processor = StreamProcessor()
+        stream_processor = StreamingProcessor(chunker, embedder, clickhouse)
         logger.info("Stream processor initialized successfully")
+
+        # Create processing queue
+        processing_queue = Queue()
+        stream_processor.processing_queue = processing_queue
 
         # Start the processing loop
         logger.info("Starting processing loop...")
-        processing_task = asyncio.create_task(stream_processor.start_processing())
+        processing_task = asyncio.create_task(stream_processor.process_messages(processing_queue))
         logger.info("Processing loop started")
 
         # Grab the running event loop for thread-safe callbacks
@@ -36,7 +49,6 @@ async def main():
         logger.info("Connecting to WebSocket...")
 
         def on_ticker(ws, msg):
-            # logger.debug(f"Received message: {msg}")
             # Thread-safe hand-off to the asyncio event loop
             asyncio.run_coroutine_threadsafe(
                 stream_processor.processing_queue.put(msg), loop
@@ -74,7 +86,6 @@ async def main():
         except KeyboardInterrupt:
             # Clean shutdown
             logger.info("Shutting down stream processor...")
-            await stream_processor.stop_processing()
             processing_task.cancel()
             logger.info("Stream processor stopped")
     except Exception as e:
