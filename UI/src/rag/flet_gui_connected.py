@@ -179,7 +179,7 @@ def main(page: ft.Page):
                         text="Vectra is a research tool that uses AI to provide answers through "
                             "Retrieval-Augmented Generation (RAG). It shows real-time metrics for "
                             "vector database and LLM performance!\n\n⭐Ask Vectra any question to "
-                            "see how it works ⭐",
+                            "see how it works! ⭐",
                         style=ft.TextStyle(color="white", weight=ft.FontWeight.W_200, size=14)
                     )
                 ]
@@ -239,7 +239,7 @@ def main(page: ft.Page):
             icon_color="white",
             icon_size=17,
             width=33,
-            bgcolor="#000000",
+            bgcolor="#001F3F",
             on_click=show_info_dialog,
             style=ft.ButtonStyle(shape=ft.CircleBorder())
         )
