@@ -14,7 +14,10 @@ class OpenSearchAdapter(VectorStoreAdapter):
 
         self.host = os.getenv("OPENSEARCH_HOST", "localhost")
         self.port = int(os.getenv("OPENSEARCH_PORT", 9200))
-        self.auth = (os.getenv("OPENSEARCH_USER", "admin"), os.getenv("OPENSEARCH_PASS", "admin"))
+        self.auth = (
+            os.getenv("OPENSEARCH_USER", "admin"),
+            os.getenv("OPENSEARCH_PASS", os.getenv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "admin"))
+        )
         self.index_name = index_name
 
         self.client = OpenSearch(
@@ -85,9 +88,10 @@ class OpenSearchAdapter(VectorStoreAdapter):
             name=container_name,
             ports={"9200/tcp": port, "9600/tcp": 9600},
             environment={
-                "discovery.type": "single-node",
+                "discovery.type": os.getenv("discovery_type", "single-node"),
                 "plugins.security.disabled": "true",
-                "OPENSEARCH_JAVA_OPTS": "-Xms512m -Xmx512m"
+                "OPENSEARCH_JAVA_OPTS": os.getenv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m"),
+                "OPENSEARCH_INITIAL_ADMIN_PASSWORD": os.getenv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "admin")
             },
             detach=True,
             remove=False,
