@@ -1,6 +1,9 @@
 from langchain.docstore.document import Document
-from nltk.tokenize import sent_tokenize
+import nltk
+import logging
 from transformers import AutoTokenizer
+
+logger = logging.getLogger(__name__)
 
 class SpecterChunker:
     """
@@ -31,10 +34,22 @@ class SpecterChunker:
                 max_tokens (int): Max token count allowed per chunk.
                 tokenizer_model (str): Tokenizer model name (must be Hugging Face-compatible).
         """
+        logger.info("Initializing SpecterChunker...")
+
+        # Download required NLTK data
+        try:
+            nltk.data.find('tokenizers/punkt')
+            logger.info("NLTK punkt tokenizer already downloaded")
+        except LookupError:
+            logger.info("Downloading NLTK punkt tokenizer...")
+            nltk.download('punkt', quiet=True)
+            logger.info("NLTK punkt tokenizer downloaded successfully")
 
         self.max_tokens = max_tokens
         self.token_overlap = token_overlap
+        logger.info(f"Loading tokenizer model: {tokenizer_model}")
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+        logger.info("SpecterChunker initialized successfully")
 
     def chunk(self, documents):
         """
@@ -45,17 +60,15 @@ class SpecterChunker:
             Returns:
                 List[Document]: A list of LangChain Document objects, each under the token limit.
         """
-
         # Holds all final chunked Document objects
         chunks = []
 
         for doc_index, document in enumerate(documents):
-
-            print(f"\n⏳ Processing document {doc_index} with {len(document)} characters")
+            logger.info(f"Processing document {doc_index} with {len(document)} characters")
 
             # Split document into sentences
-            sentences = sent_tokenize(document)
-            print(f"🟢 Tokenized into {len(sentences)} sentences")
+            sentences = nltk.sent_tokenize(document)
+            logger.info(f"Tokenized into {len(sentences)} sentences")
 
             # Tokenize each sentence once and cache token lengths
             sentence_token_pairs = [
@@ -63,7 +76,7 @@ class SpecterChunker:
                  len(self.tokenizer.encode(sentence, add_special_tokens=False))
                  ) for sentence in sentences
             ]
-            print(f"🔢 Token lengths calculated for {len(sentence_token_pairs)} sentences")
+            logger.info(f"Token lengths calculated for {len(sentence_token_pairs)} sentences")
 
             # Pointer to current sentence
             i = 0
@@ -95,7 +108,7 @@ class SpecterChunker:
                     }
 
                     chunks.append(Document(page_content=chunk_text, metadata=metadata))
-                    print(f"✅ Created chunk {chunk_index} with {current_tokens} tokens")
+                    logger.info(f"Created chunk {chunk_index} with {current_tokens} tokens")
                     chunk_index += 1
 
                     # Apply token-level overlap only if we actually advanced
@@ -113,7 +126,8 @@ class SpecterChunker:
                             else:
                                 i = new_i
                         else:
-                            # We didn’t advance (sentence too large), so force a skip
+                            # We didn't advance (sentence too large), so force a skip
                             i += 1
-        print(f"\n✅ Finished chunking. Total chunks created: {len(chunks)}")
+
+        logger.info(f"Finished chunking. Total chunks created: {len(chunks)}")
         return chunks

@@ -23,7 +23,11 @@ dependencies = [
     "pgvector (>=0.2.3,<0.3.0)",
     "numpy (>=1.24.0,<2.0.0)",
     "sentence-transformers (>=4.1.0,<5.0.0)",
-    "azure-storage-blob (>=12.25.1,<13.0.0)"
+    "torch (>=2.2.0,<3.0.0)",
+    "transformers (>=4.38.0,<5.0.0)",
+    "azure-storage-blob (>=12.25.1,<13.0.0)",
+    "yliveticker (>=0.3.0,<0.4.0)",
+    "nltk (>=3.8.1,<4.0.0)"
 ]
 
 [tool.poetry]
