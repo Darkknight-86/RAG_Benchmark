@@ -78,7 +78,7 @@ start:
 	cd API_Gateway && PYTHONPATH=src poetry run uvicorn api_gateway.fastapi_server:app --host 0.0.0.0 --port 8000 &
 	@sleep 3
 	@echo "  → Starting Enhanced Dashboard (NEW)..."
-	cd API_Gateway && PYTHONPATH=src poetry run streamlit run src/dashboard/enhanced_streamlit_dashboard.py --server.port 8502 &
+	(cd API_Gateway && PYTHONPATH=src poetry run streamlit run src/dashboard/enhanced_streamlit_dashboard.py --server.port 8502) &
 	@sleep 3
 	@echo "  → Starting Live Streaming Service..."
 	cd Embeddings && PYTHONPATH=src poetry run python src/streaming.py &
@@ -107,6 +107,7 @@ stop:
 	@pkill -f "uvicorn" || true
 	@pkill -f "api_gateway.fastapi_server" || true
 	@pkill -f "streamlit" || true
+	@pkill -f "enhanced_streamlit_dashboard" || true
 	@pkill -f "enhanced_metrics" || true
 	@pkill -f "streaming.py" || true
 	@echo "✅ All services stopped!"
@@ -161,7 +162,7 @@ clean: stop
 # Start standalone dashboard (REDESIGNED)
 dashboard:
 	@echo "🚀 Starting Enhanced Dashboard (standalone)..."
-	cd API_Gateway && PYTHONPATH=src poetry run streamlit run src/dashboard/enhanced_streamlit_dashboard.py --server.port 8502
+	(cd API_Gateway && PYTHONPATH=src poetry run streamlit run src/dashboard/enhanced_streamlit_dashboard.py --server.port 8502)
 
 # Start Embeddings streaming service only (live financial data)
 start-streaming:

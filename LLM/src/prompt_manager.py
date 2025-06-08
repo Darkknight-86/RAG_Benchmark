@@ -58,22 +58,13 @@ class PromptManager:
         Returns:
             Formatted financial prompt
         """
-        financial_prompt = """You are a financial AI assistant with access to real-time market data and financial information.
+        financial_prompt = """Based on the financial data below, answer the question about price and performance.
 
-INSTRUCTIONS:
-- Use ONLY the provided context to answer questions
-- For stock prices, always mention the timestamp if available
-- If asked about trends, reference the specific data points
-- If information is not in the context, say "I don't have current information about that"
-- Be precise with numbers and percentages
-- Mention the source and recency of data when relevant
+Data: {context}
 
-CONTEXT (Real-time Financial Data):
-{context}
+Question: {query}
 
-QUERY: {query}
-
-RESPONSE:"""
+Answer with specific prices and percentages from the data:"""
 
         return financial_prompt.format(context=context, query=query)
 
@@ -138,11 +129,10 @@ MARKET SUMMARY:"""
 
     @staticmethod
     def _get_template(model_name: str) -> str:
-        """Get the appropriate prompt template for a model."""
-        if "instruct" in model_name.lower():
-            return PROMPT_TEMPLATES["instruct"]
-        elif "flan" in model_name.lower() or "t5" in model_name.lower():
-            return PROMPT_TEMPLATES["flan-t5"]
+        """Get the appropriate prompt template for a model (Llama-optimized)."""
+        # All supported models are Llama-based now
+        if "llama" in model_name.lower():
+            return PROMPT_TEMPLATES["llama"]
         return PROMPT_TEMPLATES["default"]
 
     @staticmethod
@@ -158,8 +148,8 @@ MARKET SUMMARY:"""
         """
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
-        if len(query) > 8000:  # Increased limit for RAG context + user query
-            raise ValueError("Query exceeds maximum length of 8000 characters")
+        if len(query) > 12000:  # Increased limit for RAG context + user query
+            raise ValueError("Query exceeds maximum length of 12000 characters")
 
     @staticmethod
     def get_model_requirements(model_name: str) -> Dict:

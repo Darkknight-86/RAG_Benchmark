@@ -249,12 +249,22 @@ class EnhancedMetricsCollector:
         """Export query metrics to a readable CSV file with proper columns"""
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"query_metrics_{timestamp}.csv"
+            filename = f"LLM_query_performance_{timestamp}.csv"
 
         if minutes is None:
             minutes = self.window_minutes
 
         cutoff_time = time.time() - (minutes * 60)
+
+        # Ensure Data directory exists and use centralized location
+        import os
+        # Get the workspace root directory (3 levels up from this file)
+        workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        data_dir = os.path.join(workspace_root, 'API_Gateway', 'Data')
+        os.makedirs(data_dir, exist_ok=True)
+
+        # Full path to CSV file
+        full_path = os.path.join(data_dir, filename)
 
         # Collect query-specific events
         query_events = []
@@ -267,6 +277,12 @@ class EnhancedMetricsCollector:
                     if event.timestamp >= cutoff_time:
                         # Extract metadata into separate columns
                         metadata = event.metadata
+
+                        # Process search strategies and retrieval quality
+                        search_strategies = metadata.get('search_strategies', [])
+                        search_metrics = metadata.get('search_metrics', {})
+                        retrieval_quality = metadata.get('retrieval_quality', {})
+
                         query_events.append({
                             'timestamp': datetime.fromtimestamp(event.timestamp).isoformat(),
                             'query_type': 'financial' if 'financial' in metric_type else 'general',
@@ -278,6 +294,16 @@ class EnhancedMetricsCollector:
                             'llm_latency_seconds': round(metadata.get('llm_latency', 0), 4),
                             'tokens_used': metadata.get('tokens_used', 0),
                             'model_name': metadata.get('model_name', ''),
+                            # New search strategy metrics
+                            'search_strategies_used': ', '.join(search_strategies) if search_strategies else '',
+                            'similarity_search_docs': search_metrics.get('similarity_search', 0),
+                            'crypto_enhanced_docs': search_metrics.get('crypto_enhanced', 0),
+                            'broad_search_docs': search_metrics.get('broad_search', 0),
+                            # New retrieval quality metrics
+                            'total_docs_found': retrieval_quality.get('docs_found', 0),
+                            'avg_relevance_score': round(retrieval_quality.get('avg_relevance', 0), 3),
+                            'high_quality_docs': retrieval_quality.get('high_quality_docs', 0),
+                            'high_quality_ratio': round(retrieval_quality.get('high_quality_ratio', 0), 3),
                             'status': metadata.get('status', '')
                         })
 
@@ -287,18 +313,20 @@ class EnhancedMetricsCollector:
         # Write readable CSV
         if query_events:
             import csv
-            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+            with open(full_path, 'w', newline='', encoding='utf-8') as csvfile:
                 fieldnames = [
                     'timestamp', 'query_type', 'query', 'ticker', 'response',
                     'total_time_seconds', 'vector_latency_seconds', 'llm_latency_seconds',
-                    'tokens_used', 'model_name', 'status'
+                    'tokens_used', 'model_name', 'search_strategies_used', 'similarity_search_docs',
+                    'crypto_enhanced_docs', 'broad_search_docs', 'total_docs_found', 'avg_relevance_score',
+                    'high_quality_docs', 'high_quality_ratio', 'status'
                 ]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(query_events)
 
-        logger.info(f"📊 Exported {len(query_events)} query metrics to {filename}")
-        return filename
+        logger.info(f"📊 Exported {len(query_events)} query metrics to {full_path}")
+        return full_path
 
     async def register_websocket_client(self, websocket):
         """Register a new WebSocket client"""

@@ -15,11 +15,11 @@ load_dotenv(project_root / ".env")
 
 # Model Configuration
 MODEL_CONFIG: Dict[str, Any] = {
-    "default_model": os.getenv("DEFAULT_LLM_MODEL", "google/flan-t5-small"),
+    "default_model": os.getenv("DEFAULT_LLM_MODEL", "meta-llama/Llama-3.2-1B-Instruct"),
     "default_temperature": float(os.getenv("DEFAULT_TEMPERATURE", "0.7")),
-    "default_max_tokens": int(os.getenv("DEFAULT_MAX_TOKENS", "200")),
+    "default_max_tokens": int(os.getenv("DEFAULT_MAX_TOKENS", "1000")),
     "default_top_k": int(os.getenv("DEFAULT_TOP_K", "5")),
-    "supported_models": os.getenv("SUPPORTED_MODELS", "google/flan-t5-small,google/flan-t5-base,google/flan-t5-large").split(",")
+    "supported_models": os.getenv("SUPPORTED_MODELS", "meta-llama/Llama-3.2-1B-Instruct,meta-llama/Llama-3.2-3B-Instruct").split(",")
 }
 
 # Parameter Validation
@@ -32,63 +32,45 @@ def validate_parameters(temperature: float, max_tokens: int, top_k: int) -> None
     if top_k <= 0:
         raise ValueError("top_k must be positive")
 
-# System prompts for different models
+# System prompts for Llama models
 SYSTEM_PROMPTS = {
-    "flan-t5": "You are an assistant that answers questions based only on the provided context. Do not use any external knowledge. If the answer cannot be found in the context, say \"Not found in context.\"",
-    "instruct": "You are an assistant that answers questions based only on the provided context. Do not use any external knowledge. If the answer cannot be found in the context, say \"Not found in context.\" Always cite your sources when possible.",
-    "default": "You are an assistant that answers questions based only on the provided context. Do not use any external knowledge. If the answer cannot be found in the context, say \"Not found in context.\""
+    "llama": "You are a helpful financial AI assistant that answers questions based only on the provided context. Analyze the context carefully and provide detailed, accurate responses. If the answer cannot be found in the context, say \"Not found in context.\"",
+    "default": "You are a helpful financial AI assistant that answers questions based only on the provided context. Analyze the context carefully and provide detailed, accurate responses. If the answer cannot be found in the context, say \"Not found in context.\""
 }
 
-# Model-specific prompt templates
+# Model-specific prompt templates (Llama-focused)
 PROMPT_TEMPLATES = {
-    "flan-t5": """Instruction: Using only the information in the context provided, respond to the question below.
-Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
+    "llama": """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+You are a helpful financial AI assistant that answers questions based only on the provided context. Analyze the context carefully and provide detailed, accurate responses. If the answer cannot be found in the context, say "Not found in context."<|eot_id|><|start_header_id|>user<|end_header_id|>
 
 Context:
 {context}
 
-Question:
-{query}
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 
-Answer:""",
+""",
 
-    "instruct": """<s>[INST] <<SYS>>
-{system_prompt}
-<</SYS>>
+    "default": """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-Instruction: Using only the information in the context provided, respond to the question below.
-Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
+You are a helpful financial AI assistant that answers questions based only on the provided context. Analyze the context carefully and provide detailed, accurate responses. If the answer cannot be found in the context, say "Not found in context."<|eot_id|><|start_header_id|>user<|end_header_id|>
 
 Context:
 {context}
 
-Question:
-{query} [/INST]""",
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 
-    "default": """Instruction: Using only the information in the context provided, respond to the question below.
-Do not include any outside knowledge or assumptions. If the answer cannot be found in the context, say "Not found in context."
-
-Context:
-{context}
-
-Question:
-{query}
-
-Answer:"""
+"""
 }
 
 def get_prompt_template(model_name: str) -> str:
-    """Get the appropriate prompt template for a model."""
-    if "instruct" in model_name.lower():
-        return PROMPT_TEMPLATES["instruct"]
-    elif "flan" in model_name.lower() or "t5" in model_name.lower():
-        return PROMPT_TEMPLATES["flan-t5"]
+    """Get the appropriate prompt template for a model (Llama-optimized)."""
+    if "llama" in model_name.lower():
+        return PROMPT_TEMPLATES["llama"]
     return PROMPT_TEMPLATES["default"]
 
 def get_system_prompt(model_name: str) -> str:
-    """Get the appropriate system prompt for a model."""
-    if "instruct" in model_name.lower():
-        return SYSTEM_PROMPTS["instruct"]
-    elif "flan" in model_name.lower() or "t5" in model_name.lower():
-        return SYSTEM_PROMPTS["flan-t5"]
+    """Get the appropriate system prompt for a model (Llama-optimized)."""
+    if "llama" in model_name.lower():
+        return SYSTEM_PROMPTS["llama"]
     return SYSTEM_PROMPTS["default"]

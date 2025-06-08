@@ -71,11 +71,12 @@ services:
     volumes:
       - ./.env:/app/.env
     environment:
-      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-google/flan-t5-small}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-meta-llama/Llama-3.2-1B-Instruct}
       - DEFAULT_TEMPERATURE=${DEFAULT_TEMPERATURE:-0.7}
-      - DEFAULT_MAX_TOKENS=${DEFAULT_MAX_TOKENS:-200}
+      - DEFAULT_MAX_TOKENS=${DEFAULT_MAX_TOKENS:-1000}
       - DEFAULT_TOP_K=${DEFAULT_TOP_K:-5}
-      - SUPPORTED_MODELS=${SUPPORTED_MODELS:-google/flan-t5-small,google/flan-t5-base,google/flan-t5-large}
+      - SUPPORTED_MODELS=${SUPPORTED_MODELS:-meta-llama/Llama-3.2-1B-Instruct,meta-llama/Llama-3.2-3B-Instruct}
+      - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
     networks: [rag-network]
 
   prometheus:

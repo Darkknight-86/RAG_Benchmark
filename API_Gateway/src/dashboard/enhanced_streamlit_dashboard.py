@@ -13,96 +13,343 @@ import time
 from datetime import datetime, timedelta
 import requests
 from typing import Dict, List, Any
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Configure page with wide layout and clean styling
 st.set_page_config(
-    page_title="Financial RAG Dashboard",
-    page_icon="📊",
+    page_title="🚀 RAG System Enterprise Dashboard",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS for better styling and readability
 st.markdown("""
 <style>
+    /* Stunning main header with perfect readability */
     .main-header {
         text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        padding: 2.5rem 0;
+        background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
         color: white;
-        border-radius: 10px;
+        border-radius: 18px;
         margin-bottom: 2rem;
+        box-shadow: 0 6px 25px rgba(30, 58, 138, 0.4);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        overflow: hidden;
     }
 
-    .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        margin: 1rem 0;
-        border-left: 4px solid #667eea;
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+        animation: shine 3s infinite;
     }
 
-    .status-success {
-        border-left-color: #28a745 !important;
+    @keyframes shine {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
     }
 
-    .status-warning {
-        border-left-color: #ffc107 !important;
+    /* Make the "Powered by" text black for readability */
+    .main-header p {
+        color: #1a1a1a !important;
+        font-weight: bold !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 8px !important;
+        display: inline-block !important;
+        margin-top: 1rem !important;
     }
 
-    .status-error {
-        border-left-color: #dc3545 !important;
-    }
-
+    /* Beautiful section headers with excellent readability */
     .section-header {
-        font-size: 1.8rem;
-        font-weight: 600;
-        color: #333;
-        margin: 2rem 0 1rem 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #667eea;
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        color: #ffffff;
+        border: none;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 2rem 0;
+        font-size: 1.4rem;
+        font-weight: bold;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
+    /* Query section with better contrast */
     .query-section {
-        background: #f8f9fa;
+        background: #ffffff;
+        border: 2px solid #e0e0e0;
         padding: 2rem;
-        border-radius: 10px;
+        border-radius: 15px;
         margin: 1rem 0;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
     }
 
+    /* Query section headers and text should be black */
+    .query-section h3 {
+        color: #1a1a1a !important;
+        font-weight: bold !important;
+    }
+
+    .query-section p {
+        color: #374151 !important;
+    }
+
+    /* Export section with better readability */
     .export-section {
-        background: #e3f2fd;
+        background: #f8f9fa;
+        border: 2px solid #dee2e6;
         padding: 1.5rem;
         border-radius: 10px;
         margin: 1rem 0;
+        color: #1a1a1a !important;
     }
 
+    .export-section h3 {
+        color: #1a1a1a !important;
+        font-weight: bold !important;
+    }
+
+    /* Beautiful button styling with excellent readability */
     .stButton button {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
         color: white;
         border: none;
-        border-radius: 25px;
-        padding: 0.5rem 2rem;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
         font-weight: 600;
+        font-size: 1rem;
         transition: all 0.3s ease;
+        box-shadow: 0 3px 10px rgba(30, 64, 175, 0.3);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     .stButton button:hover {
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        box-shadow: 0 5px 15px rgba(30, 64, 175, 0.4);
     }
 
+    /* Primary button styling */
+    .stButton button[kind="primary"] {
+        background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+        box-shadow: 0 3px 10px rgba(220, 38, 38, 0.3);
+    }
+
+    .stButton button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+        box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);
+    }
+
+    /* Better metric cards */
+    .metric-card {
+        background: #ffffff;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+        border-left: 4px solid #4CAF50;
+    }
+
+    /* Status indicators with better contrast */
+    .status-success {
+        color: #2e7d32 !important;
+        background-color: #e8f5e8 !important;
+        padding: 0.5rem;
+        border-radius: 5px;
+        border-left: 4px solid #4CAF50 !important;
+    }
+
+    .status-warning {
+        color: #f57c00 !important;
+        background-color: #fff3e0 !important;
+        padding: 0.5rem;
+        border-radius: 5px;
+        border-left: 4px solid #ff9800 !important;
+    }
+
+    .status-error {
+        color: #c62828 !important;
+        background-color: #ffebee !important;
+        padding: 0.5rem;
+        border-radius: 5px;
+        border-left: 4px solid #f44336 !important;
+    }
+
+    /* Better text readability - all headers and text should be dark */
+    .stMarkdown {
+        color: #1a1a1a;
+    }
+
+    /* Make all headers dark and bold */
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+        color: #1a1a1a !important;
+        font-weight: bold !important;
+    }
+
+    /* Section titles should be dark */
+    .stMarkdown p {
+        color: #2d3748 !important;
+    }
+
+    /* Ensure all section headers are dark and visible */
+    .stMarkdown h3 {
+        color: #1a1a1a !important;
+        font-weight: bold !important;
+        font-size: 1.3rem !important;
+    }
+
+    .stMarkdown h4 {
+        color: #1a1a1a !important;
+        font-weight: bold !important;
+    }
+
+    /* Widget labels should be WHITE for better contrast */
+    label[data-testid="stWidgetLabel"] {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* Text area labels */
+    .stTextArea label {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* Selectbox labels */
+    .stSelectbox label {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* Slider labels */
+    .stSlider label {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* All widget labels */
+    .stApp label {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* Caption text should also be white */
+    .stMarkdown .caption {
+        color: #ffffff !important;
+    }
+
+    /* Section headers should remain dark only in content areas */
+    div[data-testid="stMarkdownContainer"] h3 {
+        color: #1a1a1a !important;
+    }
+
+    /* Subheader elements should be white */
+    .element-container .stMarkdown h4 {
+        color: #ffffff !important;
+        font-weight: bold !important;
+    }
+
+    /* Make subheaders in the main content area white */
+    .main .stMarkdown h4 {
+        color: #ffffff !important;
+        font-weight: bold !important;
+    }
+
+    /* Tips header should be white */
+    .main .stMarkdown h3:contains("Tips") {
+        color: #ffffff !important;
+        font-weight: bold !important;
+    }
+
+    /* All h3 headers in main content should be white */
+    .main .stMarkdown h3 {
+        color: #ffffff !important;
+        font-weight: bold !important;
+    }
+
+    /* Improved sidebar */
+    .css-1d391kg {
+        background-color: #f8f9fa;
+    }
+
+    /* Better contrast for metrics */
     .metric-big {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #667eea;
+        color: #2196F3;
     }
 
     .metric-label {
         font-size: 1.1rem;
-        color: #666;
+        color: #555555;
         margin-top: 0.5rem;
+    }
+
+    /* Improved text areas and inputs */
+    .stTextArea textarea {
+        border: 2px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        background-color: #ffffff !important;
+        color: #212529 !important;
+        font-size: 16px !important;
+    }
+
+    .stTextArea textarea:focus {
+        border-color: #28a745 !important;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+        outline: none !important;
+    }
+
+    /* Improve selectbox readability */
+    .stSelectbox > div > div {
+        background-color: #ffffff !important;
+        color: #212529 !important;
+        border: 2px solid #dee2e6 !important;
+    }
+
+    /* Better expander styling */
+    .streamlit-expanderHeader {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+
+    /* Info boxes with better contrast */
+    .stInfo {
+        background-color: #e3f2fd;
+        border: 1px solid #2196F3;
+        color: #1565c0;
+    }
+
+    .stSuccess {
+        background-color: #e8f5e8;
+        border: 1px solid #4CAF50;
+        color: #2e7d32;
+    }
+
+    .stWarning {
+        background-color: #fff3e0;
+        border: 1px solid #ff9800;
+        color: #f57c00;
+    }
+
+    .stError {
+        background-color: #ffebee;
+        border: 1px solid #f44336;
+        color: #c62828;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -114,6 +361,18 @@ if 'last_update' not in st.session_state:
     st.session_state.last_update = None
 if 'query_history' not in st.session_state:
     st.session_state.query_history = []
+
+if 'current_view' not in st.session_state:
+    st.session_state.current_view = 'main'
+
+if 'selected_query' not in st.session_state:
+    st.session_state.selected_query = ''
+
+if 'batch_queries' not in st.session_state:
+    st.session_state.batch_queries = ''
+
+if 'last_query_result' not in st.session_state:
+    st.session_state.last_query_result = None
 
 # Configuration
 API_GATEWAY_HOST = "localhost"
@@ -142,7 +401,7 @@ class ModernDashboard:
             return {}
 
     @staticmethod
-    def test_llm_query(query: str, ticker: str = None, model: str = "google/flan-t5-small", temperature: float = 0.7):
+    def test_llm_query(query: str, ticker: str = None, model: str = "meta-llama/Llama-3.2-1B-Instruct", temperature: float = 0.7):
         """Test LLM query functionality"""
         try:
             if ticker and ticker != "General Query":
@@ -161,17 +420,19 @@ class ModernDashboard:
                     "model_name": model,
                     "temperature": temperature,
                     "top_k": 5,
-                    "max_tokens": 200
+                    "max_tokens": 1000
                 }
                 endpoint = f"{QUERY_API_URL}/query"
 
-            response = requests.post(endpoint, json=payload, timeout=30)
+            response = requests.post(endpoint, json=payload, timeout=240)
 
             if response.status_code == 200:
                 return response.json()
             else:
                 return {"error": f"HTTP {response.status_code}: {response.text}"}
 
+        except requests.exceptions.Timeout:
+            return {"error": "Request timeout (240s) - LLM processing took too long. Consider using a simpler query or shorter context."}
         except Exception as e:
             return {"error": str(e)}
 
@@ -194,81 +455,11 @@ def render_header():
     """Render the main header section"""
     st.markdown("""
     <div class="main-header">
-        <h1>📊 Financial RAG Intelligence Dashboard</h1>
-        <p style="font-size: 1.2rem; margin-top: 1rem;">
-            Real-time Analytics • LLM Query Testing • Dual Metrics System
-        </p>
+        <h1>🚀 RAG System Enterprise Dashboard</h1>
+        <h3>🎯 Vector Database ↔ LLM Quality Testing Platform</h3>
+        <p><strong>Powered by:</strong> Llama 3.2 1B • ClickHouse Vector DB • Live Trading Data</p>
     </div>
     """, unsafe_allow_html=True)
-
-def render_key_metrics(metrics_data: Dict[str, Any]):
-    """Render key metrics in a prominent display"""
-    if not metrics_data:
-        st.warning("📊 No metrics data available")
-        return
-
-    st.markdown('<div class="section-header">🎯 Key Performance Indicators</div>', unsafe_allow_html=True)
-
-    # Extract key metrics
-    streaming_data = metrics_data.get('streaming_pipeline_metrics', {})
-    real_time = streaming_data.get('real_time', {})
-    summary = metrics_data.get('summary', {})
-
-    # Create 5 columns for key metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    with col1:
-        st.markdown("""
-        <div class="metric-card status-success">
-            <div class="metric-big">{}</div>
-            <div class="metric-label">VD Load Time (ms)</div>
-            <small>KEY METRIC - Vector Database Performance</small>
-        </div>
-        """.format(f"{real_time.get('avg_database_latency_ms', 0):.1f}"), unsafe_allow_html=True)
-
-    with col2:
-        ingestion_rate = real_time.get('ingestion_rate_per_second', 0)
-        status_class = "status-success" if ingestion_rate > 0 else "status-warning"
-        st.markdown("""
-        <div class="metric-card {}">
-            <div class="metric-big">{:.1f}</div>
-            <div class="metric-label">Data Ingestion Rate</div>
-            <small>Records per second</small>
-        </div>
-        """.format(status_class, ingestion_rate), unsafe_allow_html=True)
-
-    with col3:
-        active_tickers = real_time.get('active_tickers', 0)
-        st.markdown("""
-        <div class="metric-card status-success">
-            <div class="metric-big">{}</div>
-            <div class="metric-label">Active Tickers</div>
-            <small>Live streaming symbols</small>
-        </div>
-        """.format(active_tickers), unsafe_allow_html=True)
-
-    with col4:
-        healthy_services = summary.get('healthy_services', 0)
-        total_services = summary.get('total_services', 4)
-        status_class = "status-success" if healthy_services == total_services else "status-warning"
-        st.markdown("""
-        <div class="metric-card {}">
-            <div class="metric-big">{}/{}</div>
-            <div class="metric-label">Service Health</div>
-            <small>Microservices online</small>
-        </div>
-        """.format(status_class, healthy_services, total_services), unsafe_allow_html=True)
-
-    with col5:
-        embedding_latency = real_time.get('avg_embedding_latency_ms', 0)
-        status_class = "status-success" if embedding_latency < 500 else "status-warning"
-        st.markdown("""
-        <div class="metric-card {}">
-            <div class="metric-big">{:.0f}</div>
-            <div class="metric-label">Embedding Latency</div>
-            <small>Average processing time (ms)</small>
-        </div>
-        """.format(status_class, embedding_latency), unsafe_allow_html=True)
 
 def render_llm_query_interface():
     """Render the LLM query testing interface"""
@@ -282,44 +473,52 @@ def render_llm_query_interface():
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns([2, 1])
+    # Query options
+    col_a, col_b, col_c = st.columns(3)
+
+    with col_a:
+        ticker_options = [
+            "General Query",
+            # Major Cryptocurrencies
+            "BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "ADA-USD", "XRP-USD", "DOGE-USD",
+            "AVAX-USD", "DOT-USD", "LINK-USD", "MATIC-USD", "LTC-USD",
+            # US Stocks
+            "AMZN", "GOOGL", "AAPL", "MSFT", "META",
+            # Australian Stocks
+            "COL.AX", "JBH.AX", "WOW.AX", "QAN.AX", "TLS.AX"
+        ]
+        selected_ticker = st.selectbox("Focus on specific ticker (optional):", ticker_options)
+
+    with col_b:
+        model_options = ["meta-llama/Llama-3.2-1B-Instruct", "meta-llama/Llama-3.2-3B-Instruct"]
+        selected_model = st.selectbox("Model:", model_options)
+
+    with col_c:
+        temperature = st.slider("Response creativity:", 0.0, 1.0, 0.7, 0.1)
+
+    # Query input section
+    col1, col2 = st.columns([1.2, 1])
 
     with col1:
-        # Query input
+        # Query input with improved styling
         query_text = st.text_area(
-            "Enter your financial question:",
-            placeholder="Example: What is the recent performance of Amazon stock? How is Coles Group performing?",
-            height=100,
-            help="Ask questions about any financial ticker or general market analysis"
+            "✨ Enter your financial question:",
+            value=st.session_state.get('selected_query', ''),
+            placeholder="💡 Example: What is Bitcoin's current price and trend? How is Ethereum performing vs Bitcoin?",
+            height=120,
+            help="🎯 Ask questions about cryptocurrency or financial market analysis. Our AI will search through live financial data and provide intelligent responses.",
+            key="main_query_input"
         )
 
-        # Query options
-        col_a, col_b, col_c = st.columns(3)
-
-        with col_a:
-            ticker_options = ["General Query", "AMZN", "COL.AX", "JBH.AX", "WOW.AX", "QAN.AX", "TLS.AX", "GOOGL"]
-            selected_ticker = st.selectbox("Focus on specific ticker (optional):", ticker_options)
-
-        with col_b:
-            model_options = ["google/flan-t5-small", "google/flan-t5-base", "microsoft/DialoGPT-medium"]
-            selected_model = st.selectbox("Model:", model_options)
-
-        with col_c:
-            temperature = st.slider("Response creativity:", 0.0, 1.0, 0.7, 0.1)
+        # Clear query button
+        if st.button("🗑️ Clear Query", key="clear_query_btn", help="Clear the text box"):
+            st.session_state['selected_query'] = ''
+            st.rerun()
 
     with col2:
-        st.markdown("### 📋 Quick Examples")
-        example_queries = [
-            "What's the current market sentiment for tech stocks?",
-            "How has WOW.AX been performing recently?",
-            "Compare Amazon and Google stock performance",
-            "What are the key financial metrics for Australian banks?",
-            "Analyze the retail sector trends"
-        ]
-
-        for i, example in enumerate(example_queries):
-            if st.button(f"📝 Example {i+1}", key=f"example_{i}", help=example):
-                st.session_state['query_input'] = example
+        # Removed query suggestions section as requested
+        st.markdown("### 💡 Tips")
+        st.info("💡 **Try asking about:**\n- Bitcoin or crypto prices\n- Market trends\n- Stock comparisons\n- Financial analysis")
 
     # Query execution
     col_query, col_clear = st.columns([3, 1])
@@ -364,21 +563,50 @@ def render_query_results(result: Dict[str, Any]):
         </div>
         """, unsafe_allow_html=True)
 
-    # Metrics
+    # Enhanced Metrics focusing on retrieval quality
     if "metrics" in result:
-        st.markdown("#### ⚡ Performance Metrics")
+        st.markdown("#### 🎯 Retrieval Quality & Response Analysis")
         metrics = result["metrics"]
 
-        col1, col2, col3, col4 = st.columns(4)
+        # Primary metrics focused on VD → LLM pipeline quality
+        col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.metric("Vector Search", f"{metrics.get('vector_latency', 0):.0f}ms", "Retrieval time")
+            vd_latency = metrics.get('vector_latency', 0) * 1000  # Convert to ms
+            vd_quality = "🟢 Excellent" if vd_latency < 100 else "🟡 Good" if vd_latency < 200 else "🔴 Needs Attention"
+            st.metric("Vector DB Retrieval", f"{vd_latency:.0f}ms", vd_quality)
+
         with col2:
-            st.metric("LLM Generation", f"{metrics.get('llm_latency', 0):.0f}ms", "Response time")
+            llm_latency = metrics.get('llm_latency', 0)
+            response_quality = "🎯 Rich Context" if metrics.get('tokens_used', 0) > 50 else "⚠️ Limited Context"
+            st.metric("LLM Processing", f"{llm_latency:.2f}s", response_quality)
+
         with col3:
-            st.metric("Total Time", f"{metrics.get('total_time', 0):.2f}s", "End-to-end")
-        with col4:
-            st.metric("Tokens Used", f"{metrics.get('tokens_used', 0)}", f"Model: {metrics.get('model_name', 'Unknown')}")
+            tokens = metrics.get('tokens_used', 0)
+            token_indicator = "📝 Detailed" if tokens > 60 else "📄 Standard" if tokens > 30 else "📋 Brief"
+            st.metric("Response Depth", f"{tokens} tokens", token_indicator)
+
+        # Sources quality analysis
+        if "sources" in result and result["sources"]:
+            st.markdown("#### 📊 Vector Database Retrieval Analysis")
+
+            sources = result["sources"]
+            if sources:
+                avg_score = sum(source.get('score', 0) for source in sources) / len(sources)
+                high_quality_sources = len([s for s in sources if s.get('score', 0) > 0.7])
+
+                col_a, col_b, col_c = st.columns(3)
+
+                with col_a:
+                    quality_indicator = "🟢 Excellent" if avg_score > 0.8 else "🟡 Good" if avg_score > 0.6 else "🔴 Poor"
+                    st.metric("Average Relevance", f"{avg_score:.3f}", quality_indicator)
+
+                with col_b:
+                    st.metric("High-Quality Sources", f"{high_quality_sources}/{len(sources)}", f"{(high_quality_sources/len(sources)*100):.0f}%")
+
+                with col_c:
+                    context_richness = "🎯 Rich" if len(sources) >= 3 else "📄 Moderate" if len(sources) >= 2 else "📋 Limited"
+                    st.metric("Sources Retrieved", f"{len(sources)}", context_richness)
 
     # Sources
     if "sources" in result and result["sources"]:
@@ -412,44 +640,36 @@ def render_query_history():
                     metrics = query_item['result']['metrics']
                     st.write(f"**Time:** {metrics.get('total_time', 0):.2f}s")
 
-# Removed render_streaming_charts function - streaming metrics now export directly to CSV
-
 def render_export_section():
-    """Render CSV export functionality"""
-    st.markdown('<div class="section-header">📤 Data Export</div>', unsafe_allow_html=True)
+    """Render simplified CSV export functionality - LLM queries only"""
+    st.markdown('<div class="section-header">📤 LLM Query Export</div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="export-section">
-        <h3>💾 Export Metrics to CSV</h3>
-        <p>Download historical metrics data for analysis and reporting. Choose between streaming
-        pipeline metrics (live data flow) or RAG query metrics (LLM performance).</p>
+        <h3>💾 Export LLM Query Metrics</h3>
+        <p>Download LLM query performance data for analysis and reporting.
+        <em>Note: Live streaming data exports automatically every 5 minutes.</em></p>
     </div>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([2, 1, 1])
 
     with col1:
-        export_type = st.selectbox(
-            "Export Type:",
-            ["streaming", "queries"],
-            format_func=lambda x: {
-                "streaming": "📊 Streaming Pipeline Metrics (VD load times, ingestion rates)",
-                "queries": "🧠 RAG Query Metrics (LLM performance, response times)"
-            }[x]
-        )
+        st.markdown("**Export Type:** 🧠 LLM Query Performance Metrics")
+        st.caption("Response times, token usage, model performance, query history")
 
     with col2:
         time_range = st.selectbox(
             "Time Range:",
-            [60, 180, 360, 720, 1440],
-            format_func=lambda x: f"{x} minutes" if x < 1440 else "24 hours",
+            [1, 5, 10, 15],
+            format_func=lambda x: f"{x} minutes",
             index=1
         )
 
     with col3:
-        if st.button("📥 Export CSV", type="primary"):
-            with st.spinner("Generating CSV export..."):
-                result = ModernDashboard.export_csv(export_type, time_range)
+        if st.button("📥 Export LLM Metrics", type="primary"):
+            with st.spinner("Generating LLM query CSV export..."):
+                result = ModernDashboard.export_csv("queries", time_range)
 
                 if "error" in result:
                     st.error(f"❌ Export failed: {result['error']}")
@@ -458,23 +678,14 @@ def render_export_section():
                     st.json(result)
 
 def render_sidebar():
-    """Render enhanced sidebar with controls"""
+    """Render focused sidebar for query analysis"""
     with st.sidebar:
-        st.markdown("## 🎛️ Dashboard Controls")
+        st.markdown("## 🎯 Query Analysis Tools")
 
-        # Auto-refresh controls
-        st.markdown("### 🔄 Real-time Updates")
-        auto_refresh = st.checkbox("Enable auto-refresh", value=True)
-        refresh_interval = st.slider("Refresh interval (seconds)", 5, 60, 15)
-
-        # Manual refresh
-        if st.button("🔄 Refresh Now", type="primary"):
-            st.rerun()
-
-        # Connection status
+        # Connection status only
         st.markdown("### 🔗 Connection Status")
         try:
-            response = requests.get(f"http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/health", timeout=3)
+            response = requests.get(f"http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/health", timeout=5)
             if response.status_code == 200:
                 st.success("✅ FastAPI Gateway Connected")
                 health_data = response.json()
@@ -489,95 +700,238 @@ def render_sidebar():
         except:
             st.error("❌ Cannot reach API Gateway")
 
-        # Quick stats
-        if st.session_state.metrics_data:
-            st.markdown("### 📊 Quick Stats")
-            metrics_data = st.session_state.metrics_data
-            streaming_data = metrics_data.get('streaming_pipeline_metrics', {})
-            real_time = streaming_data.get('real_time', {})
+        # View selection using session state
+        st.markdown("### 🔍 Analysis Views")
 
-            st.metric("VD Load Time", f"{real_time.get('avg_database_latency_ms', 0):.1f}ms")
-            st.metric("Active Tickers", f"{real_time.get('active_tickers', 0)}")
-            st.metric("Query History", f"{len(st.session_state.query_history)}")
+        view_options = {
+            'main': '🏠 Main Dashboard',
+            'llm_analysis': '🧠 LLM Performance',
+            'batch_testing': '⚡ Batch Testing'
+        }
+
+        for view_key, view_label in view_options.items():
+            if st.button(view_label, key=f"view_{view_key}"):
+                st.session_state.current_view = view_key
 
         # System info
         st.markdown("### ℹ️ System Information")
-        st.info(f"**Dashboard Version:** 2.0.0 Redesigned\n**Update Time:** {datetime.now().strftime('%H:%M:%S')}")
+        st.info(f"**Dashboard Version:** 3.1.0 Fixed\n**Mode:** Manual Analysis\n**Query History:** {len(st.session_state.query_history)} queries")
 
-        return auto_refresh, refresh_interval
+def render_analysis_views():
+    """Render different analysis views based on current selection"""
+
+    if st.session_state.current_view == 'llm_analysis':
+        render_llm_analysis_view()
+    elif st.session_state.current_view == 'batch_testing':
+        render_batch_testing_view()
+
+# Query patterns functionality deprecated as requested
+
+def render_llm_analysis_view():
+    """Deep dive LLM performance analysis"""
+    st.markdown("### 🧠 LLM Performance Deep Dive")
+
+    if not st.session_state.query_history:
+        st.warning("No query history available. Run some queries first!")
+        return
+
+    # Performance metrics analysis
+    metrics_data = []
+    for q in st.session_state.query_history:
+        if 'result' in q and 'metrics' in q['result']:
+            m = q['result']['metrics']
+            metrics_data.append({
+                'Query': q['query'][:50] + '...',
+                'Vector Latency (ms)': m.get('vector_latency', 0) * 1000,
+                'LLM Latency (ms)': m.get('llm_latency', 0) * 1000,
+                'Total Time (s)': m.get('total_time', 0),
+                'Tokens': m.get('tokens_used', 0),
+                'Model': m.get('model_name', 'Unknown')
+            })
+
+    if metrics_data:
+        df = pd.DataFrame(metrics_data)
+        st.dataframe(df, use_container_width=True)
+
+        # Performance visualization
+        if len(df) > 1:
+            fig = px.scatter(df, x='Vector Latency (ms)', y='LLM Latency (ms)',
+                           size='Tokens', hover_data=['Query', 'Model'],
+                           title="Vector vs LLM Latency Analysis")
+            st.plotly_chart(fig, use_container_width=True)
+
+def render_batch_testing_view():
+    """Batch query testing interface"""
+    st.markdown("### ⚡ Batch Query Testing")
+
+    st.markdown("""
+    <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+        <strong>🚨 Pressure Testing Mode:</strong> Send multiple queries to stress-test the LLM and get comprehensive metrics.
+        <br><strong>📋 How to use:</strong> Click auto-populate buttons to load example queries, then edit as needed, or type your own queries.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Crypto query examples
+    crypto_queries = [
+        "What is the current price, volume, and trend of Bitcoin (BTC-USD)?",
+        "How is Ethereum performing compared to Bitcoin today?",
+        "Compare Bitcoin vs Ethereum: prices, trends, and volume data",
+        "What are the current prices and trends of all DeFi tokens?",
+        "Which cryptocurrencies show the highest volume and price changes?"
+    ]
+
+    # Auto-populate buttons
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("📝 Load Crypto Queries", type="secondary"):
+            st.session_state['batch_queries'] = '\n'.join(crypto_queries)
+
+    with col2:
+        if st.button("📝 Load Financial Queries", type="secondary"):
+            financial_queries = [
+                "How are tech stocks performing?",
+                "What's driving market volatility?",
+                "Compare Australian vs US market performance"
+            ]
+            st.session_state['batch_queries'] = '\n'.join(financial_queries)
+
+    with col3:
+        if st.button("🗑️ Clear Queries"):
+            st.session_state['batch_queries'] = ''
+
+    # Batch query editor
+    st.subheader("🎯 Batch Query Editor")
+    batch_queries_text = st.text_area(
+        "Batch Queries (one per line):",
+        value=st.session_state.get('batch_queries', ''),
+        placeholder="Enter your test queries here...\nWhat is the market doing?\nHow are tech stocks performing?",
+        height=200
+    )
+
+    # Update session state
+    st.session_state['batch_queries'] = batch_queries_text
+
+    # Execution
+    query_count = len([q.strip() for q in batch_queries_text.split('\n') if q.strip()])
+    if st.button(f"🚀 Run Batch Testing ({query_count} queries)", type="primary", disabled=query_count == 0):
+        queries = [q.strip() for q in batch_queries_text.split('\n') if q.strip()]
+        run_batch_queries(queries)
+
+def run_batch_queries(queries: List[str]):
+    """Execute a batch of queries for pressure testing"""
+    st.markdown(f"### 🔄 Running Batch ({len(queries)} queries)")
+
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    batch_results = []
+
+    for i, query in enumerate(queries):
+        status_text.text(f"Processing query {i+1}/{len(queries)}: {query[:50]}...")
+        progress_bar.progress((i + 1) / len(queries))
+
+        # Execute query
+        result = ModernDashboard.test_llm_query(query)
+
+        if "error" not in result:
+            batch_results.append({
+                "query": query,
+                "response": result.get("response", "No response"),
+                "metrics": result.get("metrics", {}),
+                "success": True
+            })
+
+            # Add to session history
+            st.session_state.query_history.insert(0, {
+                "timestamp": datetime.now(),
+                "query": query,
+                "ticker": None,
+                "model": result.get("metrics", {}).get("model_name", "Unknown"),
+                "result": result
+            })
+        else:
+            batch_results.append({
+                "query": query,
+                "error": result["error"],
+                "success": False
+            })
+
+    # Display results
+    st.markdown("### 📊 Batch Results Summary")
+
+    successful = len([r for r in batch_results if r["success"]])
+    total_time = sum([r["metrics"].get("total_time", 0) for r in batch_results if r["success"]])
+    avg_time = total_time / successful if successful > 0 else 0
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Successful Queries", f"{successful}/{len(queries)}")
+    with col2:
+        st.metric("Success Rate", f"{(successful/len(queries)*100):.1f}%")
+    with col3:
+        st.metric("Total Time", f"{total_time:.2f}s")
+    with col4:
+        st.metric("Avg Time/Query", f"{avg_time:.2f}s")
+
+    # Detailed results
+    for i, result in enumerate(batch_results):
+        with st.expander(f"Query {i+1}: {result['query'][:50]}..." + (" ✅" if result["success"] else " ❌")):
+            if result["success"]:
+                st.write(f"**Response:** {result['response']}")
+                if result["metrics"]:
+                    st.write(f"**Metrics:** {result['metrics']}")
+            else:
+                st.error(f"**Error:** {result['error']}")
+
+    status_text.text(f"✅ Batch complete! {successful}/{len(queries)} queries successful")
+
+# Quick examples section removed as requested
 
 def main():
-    """Main dashboard application"""
+    """Main dashboard application - focused on LLM query testing"""
     render_header()
 
     # Sidebar controls
-    auto_refresh, refresh_interval = render_sidebar()
+    render_sidebar()
 
-    # Fetch metrics data
-    if auto_refresh or 'metrics_data' not in st.session_state or not st.session_state.metrics_data:
-        metrics_data = ModernDashboard.fetch_current_metrics()
-        st.session_state.metrics_data = metrics_data
+    # Initialize metrics data if needed
+    if 'metrics_data' not in st.session_state:
+        st.session_state.metrics_data = {}
         st.session_state.last_update = datetime.now()
-    else:
-        metrics_data = st.session_state.metrics_data
 
-    # Render main sections
-    if metrics_data:
-        render_key_metrics(metrics_data)
-
-        # Add spacing
-        st.markdown("<br>", unsafe_allow_html=True)
-
+    # Display content based on current view
+    if st.session_state.current_view == 'main':
+        # Main dashboard content
         render_llm_query_interface()
         render_query_history()
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Removed streaming charts - dashboard now focuses on LLM query testing
-        st.markdown("""
-        <div style="background: #e8f4fd; padding: 1.5rem; border-radius: 10px; border-left: 4px solid #2196F3;">
-            <h3>📊 Streaming Data Note</h3>
-            <p>Live streaming metrics (VD load times, ingestion rates, active tickers) are automatically exported to CSV files every 5 minutes.</p>
-            <p><strong>📁 Check for files:</strong> <code>live_streaming_metrics_YYYYMMDD_HHMMSS.csv</code></p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
         render_export_section()
 
-        # Debug section (collapsible)
-        with st.expander("🔧 Debug Information"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("**Streaming Pipeline Data:**")
-                st.json(metrics_data.get('streaming_pipeline_metrics', {}))
-            with col2:
-                st.markdown("**RAG Query Data:**")
-                st.json(metrics_data.get('rag_query_metrics', {}))
-
-    else:
-        st.error("❌ No metrics data available")
+        # Streaming data note
         st.markdown("""
-        ### 🛠️ Troubleshooting
-        1. **Check FastAPI Gateway:** Ensure it's running on port 8000
-        2. **Check Services:** Verify Embeddings and LLM services are active
-        3. **Check Network:** Ensure dashboard can reach API endpoints
+        <div style="background: #e8f4fd; padding: 1.5rem; border-radius: 10px; border-left: 4px solid #2196F3; margin-top: 2rem;">
+            <h3>📊 Automated Pipeline Metrics</h3>
+            <p>✅ <strong>Component CSV Exports:</strong> RAG pipeline metrics are automatically exported every 30 seconds:</p>
+            <ul>
+                <li>📡 <code>streaming_data_metrics.csv</code> - Data ingestion, throughput, latency</li>
+                <li>✂️ <code>chunking_metrics.csv</code> - Text chunking performance, chunk sizes</li>
+                <li>🧠 <code>embedding_metrics.csv</code> - Embedding generation, model performance</li>
+                <li>🗄️ <code>vector_db_metrics.csv</code> - VD indexing/reindexing, database performance</li>
+            </ul>
+            <p>🎯 <strong>This dashboard:</strong> Manual query testing • Deep-dive analysis • Batch pressure testing</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Analysis views
+        render_analysis_views()
 
-        **Quick Start:**
-        ```bash
-        # In terminal 1: Start FastAPI Gateway
-        cd API_Gateway && poetry run uvicorn api_gateway.fastapi_server:app --host 0.0.0.0 --port 8000
-
-        # In terminal 2: Start streaming service
-        make start-streaming
-        ```
-        """)
-
-    # Auto-refresh
-    if auto_refresh:
-        time.sleep(refresh_interval)
-        st.rerun()
+        # Back to main button
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🏠 Back to Main Dashboard", type="secondary"):
+            st.session_state.current_view = 'main'
 
 if __name__ == "__main__":
     main()

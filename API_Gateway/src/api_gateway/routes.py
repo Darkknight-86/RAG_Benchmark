@@ -19,12 +19,7 @@ from dotenv import load_dotenv
 # Import clients (required)
 from .clients import LLMClient, EmbeddingsClient
 
-# Import optional monitoring
-try:
-    from .metrics import metrics_collector
-except ImportError:
-    print("Warning: Basic metrics module not found")
-    metrics_collector = None
+# Removed deprecated basic metrics import - using enhanced_metrics only
 
 # Import optional grpc pb2
 try:
@@ -79,10 +74,10 @@ def query():
 
         # Get parameters with defaults
         query_text = data['query']
-        model_name = data.get('model_name', os.getenv("DEFAULT_LLM_MODEL", "google/flan-t5-small"))
+        model_name = data.get('model_name', os.getenv("DEFAULT_LLM_MODEL", "meta-llama/Llama-3.2-1B-Instruct"))
         top_k = data.get('top_k', int(os.getenv("DEFAULT_TOP_K", "5")))
         temperature = data.get('temperature', float(os.getenv("DEFAULT_TEMPERATURE", "0.7")))
-        max_tokens = data.get('max_tokens', int(os.getenv("DEFAULT_MAX_TOKENS", "200")))
+        max_tokens = data.get('max_tokens', int(os.getenv("DEFAULT_MAX_TOKENS", "1000")))
 
         logger.info(f"🔧 Processing query: model={model_name}, temp={temperature}, tokens={max_tokens}")
 
@@ -162,7 +157,7 @@ def financial_query():
 
         query_text = data['query']
         ticker = data.get('ticker')
-        model_name = data.get('model_name', "google/flan-t5-small")
+        model_name = data.get('model_name', "meta-llama/Llama-3.2-1B-Instruct")
         temperature = data.get('temperature', 0.7)
 
         logger.info(f"💼 Financial query for ticker: {ticker or 'general'}")
@@ -212,15 +207,33 @@ def get_active_tickers():
     """Get list of currently active tickers in the system."""
     try:
         # This would query the ClickHouse database for active tickers
-        # For now, return the demo tickers we know are working
+        # Expanded list now includes comprehensive crypto coverage
         active_tickers = [
-            {"ticker": "AMZN", "name": "Amazon.com Inc", "status": "active"},
-            {"ticker": "COL.AX", "name": "Coles Group Limited", "status": "active"},
-            {"ticker": "JBH.AX", "name": "JB Hi-Fi Limited", "status": "active"},
-            {"ticker": "WOW.AX", "name": "Woolworths Group Limited", "status": "active"},
-            {"ticker": "QAN.AX", "name": "Qantas Airways Limited", "status": "active"},
-            {"ticker": "TLS.AX", "name": "Telstra Corporation Limited", "status": "active"},
-            {"ticker": "GOOGL", "name": "Alphabet Inc", "status": "active"}
+            # Major Cryptocurrencies (24/7 trading for continuous data)
+            {"ticker": "BTC-USD", "name": "Bitcoin", "status": "active", "category": "crypto"},
+            {"ticker": "ETH-USD", "name": "Ethereum", "status": "active", "category": "crypto"},
+            {"ticker": "USDT-USD", "name": "Tether", "status": "active", "category": "crypto"},
+            {"ticker": "BNB-USD", "name": "Binance Coin", "status": "active", "category": "crypto"},
+            {"ticker": "SOL-USD", "name": "Solana", "status": "active", "category": "crypto"},
+            {"ticker": "DOGE-USD", "name": "Dogecoin", "status": "active", "category": "crypto"},
+            {"ticker": "ADA-USD", "name": "Cardano", "status": "active", "category": "crypto"},
+            {"ticker": "AVAX-USD", "name": "Avalanche", "status": "active", "category": "crypto"},
+            {"ticker": "DOT-USD", "name": "Polkadot", "status": "active", "category": "crypto"},
+            {"ticker": "LINK-USD", "name": "Chainlink", "status": "active", "category": "crypto"},
+
+            # US Stocks
+            {"ticker": "AMZN", "name": "Amazon.com Inc", "status": "active", "category": "us_stock"},
+            {"ticker": "GOOGL", "name": "Alphabet Inc", "status": "active", "category": "us_stock"},
+            {"ticker": "AAPL", "name": "Apple Inc", "status": "active", "category": "us_stock"},
+            {"ticker": "MSFT", "name": "Microsoft Corp", "status": "active", "category": "us_stock"},
+            {"ticker": "META", "name": "Meta Platforms", "status": "active", "category": "us_stock"},
+
+            # Australian Stocks
+            {"ticker": "COL.AX", "name": "Coles Group Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "JBH.AX", "name": "JB Hi-Fi Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "WOW.AX", "name": "Woolworths Group Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "QAN.AX", "name": "Qantas Airways Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "TLS.AX", "name": "Telstra Corporation Limited", "status": "active", "category": "au_stock"}
         ]
 
         return jsonify({
@@ -344,7 +357,7 @@ def metrics_dashboard():
             <ol>
                 <li>Start the embeddings service for financial data streaming</li>
                 <li>Start the LLM service for RAG queries</li>
-                <li>Use the Streamlit dashboard: <code>streamlit run src/dashboard/streamlit_dashboard.py</code></li>
+                <li>Use the Streamlit dashboard: <code>streamlit run src/dashboard/enhanced_streamlit_dashboard.py --server.port 8502</code></li>
                 <li>Send queries to <code>/api/financial/query</code> for financial analysis</li>
             </ol>
 

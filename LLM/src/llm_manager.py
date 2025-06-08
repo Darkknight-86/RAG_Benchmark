@@ -1,6 +1,6 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple
 import time
-from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from dotenv import load_dotenv
 import os
@@ -13,9 +13,15 @@ class LLMManager:
     """Manages different LLM models from Hugging Face."""
 
     def __init__(self):
-        self.models: Dict[str, Tuple[Union[AutoModelForCausalLM, AutoModelForSeq2SeqLM], AutoTokenizer]] = {}
+        self.models: Dict[str, Tuple[AutoModelForCausalLM, AutoTokenizer]] = {}
         self.default_model = MODEL_CONFIG["default_model"]
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Get Hugging Face token for gated models
+        self.hf_token = os.getenv("HUGGINGFACE_HUB_TOKEN")
+        if self.hf_token:
+            print("🔑 Using Hugging Face authentication token")
+        else:
+            print("⚠️ No Hugging Face token found - some models may not be accessible")
         print(f"Using device: {self.device}")
 
     def load_model(self, model_name: str) -> None:
@@ -27,27 +33,37 @@ class LLMManager:
             raise ValueError(f"Model {model_name} is not in supported models list")
 
         print(f"Loading model: {model_name}")
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        # Prepare authentication arguments
+        auth_kwargs = {}
+        if self.hf_token:
+            auth_kwargs['token'] = self.hf_token
+
+        # Load tokenizer with authentication
+        tokenizer = AutoTokenizer.from_pretrained(model_name, **auth_kwargs)
+
+        # Set padding token for models that don't have one
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
 
         # For CPU, we don't use device_map
         device_map_arg = "auto" if self.device == "cuda" else None
 
-        # Try loading as causal LM first
+        # Common model loading arguments
+        model_kwargs = {
+            'torch_dtype': torch.float32,  # Always use float32 for CPU
+            'device_map': device_map_arg,
+            'low_cpu_mem_usage': True,
+            **auth_kwargs  # Include authentication
+        }
+
+        # Try loading as causal LM (Llama models)
         try:
-            model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                torch_dtype=torch.float32,  # Always use float32 for CPU
-                device_map=device_map_arg,
-                low_cpu_mem_usage=True
-            )
-        except ValueError:
-            # If that fails, try loading as seq2seq model (Flan-T5 etc.)
-            model = AutoModelForSeq2SeqLM.from_pretrained(
-                model_name,
-                torch_dtype=torch.float32,  # Always use float32 for CPU
-                device_map=device_map_arg,
-                low_cpu_mem_usage=True
-            )
+            model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+            print(f"✅ Loaded Llama model: {model_name}")
+        except Exception as e:
+            print(f"❌ Failed to load model: {e}")
+            raise e
 
         # Move model to device if not using device_map
         if device_map_arg is None:
@@ -56,7 +72,7 @@ class LLMManager:
         self.models[model_name] = (model, tokenizer)
         print(f"Model loaded successfully on {self.device}")
 
-    def get_model(self, model_name: Optional[str] = None) -> Tuple[Union[AutoModelForCausalLM, AutoModelForSeq2SeqLM], AutoTokenizer]:
+    def get_model(self, model_name: Optional[str] = None) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
         """Get a loaded model or load it if not already loaded."""
         model_name = model_name or self.default_model
         if model_name not in self.models:
@@ -109,21 +125,17 @@ class LLMManager:
             "top_k": top_k
         }
 
-        # Handle different model types
-        if isinstance(model, AutoModelForCausalLM):
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=max_tokens,
-                **gen_kwargs
-            )
-        else:  # Seq2Seq model
-            outputs = model.generate(
-                **inputs,
-                max_length=max_tokens,
-                **gen_kwargs
-            )
+        # Generate with Causal LM (Llama models)
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=max_tokens,
+            **gen_kwargs
+        )
 
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Extract only the newly generated tokens (not the input prompt)
+        input_length = inputs['input_ids'].shape[1]
+        generated_tokens = outputs[0][input_length:]
+        response = tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
         # Calculate metrics
         latency = time.time() - start_time

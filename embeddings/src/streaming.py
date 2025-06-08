@@ -34,16 +34,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def periodic_csv_export():
-    """Export streaming metrics to CSV every 5 minutes."""
+    """Export streaming metrics to component-specific CSVs every 30 seconds."""
     while True:
         try:
-            time.sleep(300)  # Wait 5 minutes
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"live_streaming_metrics_{timestamp}.csv"
+            time.sleep(30)  # Wait 30 seconds
 
-            # Export last 60 minutes of data
-            exported_file = streaming_metrics.export_streaming_csv(filename, minutes=60)
-            logger.info(f"🗄️ Auto-exported streaming metrics to: {exported_file}")
+            # Export last 5 minutes of data to component-specific CSV files
+            exported_files = streaming_metrics.export_component_csvs(minutes=5)
+
+            if exported_files:
+                logger.info(f"🗄️ Auto-exported component metrics:")
+                for component, filename in exported_files.items():
+                    logger.info(f"  📊 {component}: {filename}")
+            else:
+                logger.info("🗄️ No new metrics to export")
 
         except Exception as e:
             logger.error(f"Failed to auto-export streaming metrics: {e}")
@@ -80,8 +84,73 @@ class FinancialDataStreamer:
             "EURUSD=X", "GBPUSD=X", "USDJPY=X", "USDCHF=X",
             "AUDUSD=X", "USDCAD=X", "NZDUSD=X", "EURGBP=X",
             "EURJPY=X", "GBPJPY=X", "EURCHF=X", "GBPCHF=X",
-            # Cryptocurrency (24/7 trading)
-            "BTC-USD", "ETH-USD", "ADA-USD", "XRP-USD",
+
+            # Cryptocurrency (24/7 trading) - SIGNIFICANTLY EXPANDED
+            # Major Cryptocurrencies (Top 10 by market cap)
+            "BTC-USD",   # Bitcoin
+            "ETH-USD",   # Ethereum
+            "USDT-USD",  # Tether
+            "BNB-USD",   # Binance Coin
+            "SOL-USD",   # Solana
+            "USDC-USD",  # USD Coin
+            "XRP-USD",   # Ripple
+            "TON11419-USD", # Toncoin
+            "DOGE-USD",  # Dogecoin
+            "ADA-USD",   # Cardano
+
+            # Popular Altcoins (Next tier)
+            "AVAX-USD",  # Avalanche
+            "SHIB-USD",  # Shiba Inu
+            "DOT-USD",   # Polkadot
+            "TRX-USD",   # TRON
+            "LINK-USD",  # Chainlink
+            "MATIC-USD", # Polygon
+            "LTC-USD",   # Litecoin
+            "BCH-USD",   # Bitcoin Cash
+            "NEAR-USD",  # NEAR Protocol
+            "UNI3-USD",  # Uniswap
+
+            # DeFi & Layer 2 Tokens
+            "ATOM-USD",  # Cosmos
+            "FIL-USD",   # Filecoin
+            "VET-USD",   # VeChain
+            "ICP-USD",   # Internet Computer
+            "APT21794-USD", # Aptos
+            "ARB11841-USD", # Arbitrum
+            "OP-USD",    # Optimism
+            "IMX10603-USD", # Immutable X
+            "AAVE-USD",  # Aave
+            "MKR-USD",   # Maker
+
+            # Meme & Community Coins
+            "PEPE24478-USD", # Pepe
+            "FLOKI-USD",     # Floki Inu
+            "BONK-USD",      # Bonk
+            "WIF-USD",       # dogwifhat
+
+            # Enterprise & Utility Tokens
+            "XLM-USD",   # Stellar
+            "ALGO-USD",  # Algorand
+            "HBAR-USD",  # Hedera
+            "FLOW-USD",  # Flow
+            "SAND-USD",  # The Sandbox
+            "MANA-USD",  # Decentraland
+            "ENJ-USD",   # Enjin Coin
+            "CHZ-USD",   # Chiliz
+
+            # Stablecoins & Wrapped Assets
+            "DAI-USD",   # Dai
+            "BUSD-USD",  # Binance USD
+            "TUSD-USD",  # TrueUSD
+
+            # Emerging & High Potential
+            "SUI20947-USD", # Sui
+            "SEI22457-USD", # Sei
+            "INJ-USD",      # Injective
+            "TIA22861-USD", # Celestia
+            "PYTH-USD",     # Pyth Network
+            "JUP23095-USD", # Jupiter
+
             # Australian stocks
             "QAN.AX", "WOW.AX", "COL.AX", "TLS.AX", "JBH.AX",
             # US stocks
@@ -126,9 +195,28 @@ def on_ticker(ws, msg):
             metadata={"source": "yliveticker"}
         )
 
+        # METRICS: Track chunking operation timing
+        chunking_start = time.time()
+
         # Chunk the message using configured chunker
         chunks = streamer.chunker.split_text(text)
-        logger.debug(f"Processing {len(chunks)} chunks for ticker {ticker_id}")
+
+        # METRICS: Record chunking performance
+        chunking_latency = (time.time() - chunking_start) * 1000  # Convert to ms
+        streaming_metrics.record_chunking_operation(
+            ticker=ticker_id,
+            original_text=text,
+            chunks=chunks,
+            latency_ms=chunking_latency,
+            chunker_config={
+                "chunk_size": streamer.chunker._chunk_size,
+                "chunk_overlap": streamer.chunker._chunk_overlap,
+                "length_function": str(streamer.chunker._length_function),
+                "separators": streamer.chunker._separators
+            }
+        )
+
+        logger.debug(f"Processing {len(chunks)} chunks for ticker {ticker_id} (chunking: {chunking_latency:.2f}ms)")
 
         if not chunks:
             return
@@ -225,7 +313,7 @@ def start_streaming():
     # Start automatic CSV export thread
     csv_thread = threading.Thread(target=periodic_csv_export, daemon=True)
     csv_thread.start()
-    logger.info("🗄️ Started automatic CSV export (every 5 minutes)")
+    logger.info("🗄️ Started automatic component CSV export (every 30 seconds → 4 pipeline CSV files)")
 
     ticker = yliveticker.YLiveTicker(
         on_ticker=on_ticker,

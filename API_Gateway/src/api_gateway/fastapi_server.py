@@ -65,15 +65,15 @@ app.add_middleware(
 # Pydantic models for request/response validation
 class QueryRequest(BaseModel):
     query: str
-    model_name: Optional[str] = "google/flan-t5-small"
+    model_name: Optional[str] = "meta-llama/Llama-3.2-1B-Instruct"
     top_k: Optional[int] = 5
     temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 200
+    max_tokens: Optional[int] = 1000  # Increased for Llama
 
 class FinancialQueryRequest(BaseModel):
     query: str
     ticker: Optional[str] = None
-    model_name: Optional[str] = "google/flan-t5-small"
+    model_name: Optional[str] = "meta-llama/Llama-3.2-1B-Instruct"
     temperature: Optional[float] = 0.7
 
 class QueryMetrics(BaseModel):
@@ -82,6 +82,10 @@ class QueryMetrics(BaseModel):
     total_time: float
     tokens_used: int
     model_name: str
+    # Enhanced metrics for search strategies and retrieval quality
+    search_strategies: Optional[List[str]] = []
+    search_metrics: Optional[Dict[str, Any]] = {}
+    retrieval_quality: Optional[Dict[str, Any]] = {}
 
 class QueryResponse(BaseModel):
     response: str
@@ -172,7 +176,11 @@ async def query(request: QueryRequest):
                     llm_latency=response.metrics.llm_latency,
                     total_time=total_time,
                     tokens_used=response.metrics.tokens_used,
-                    model_name=response.metrics.model_name
+                    model_name=response.metrics.model_name,
+                    # Enhanced metrics
+                    search_strategies=getattr(response.metrics, 'search_strategies', []),
+                    search_metrics=getattr(response.metrics, 'search_metrics', {}),
+                    retrieval_quality=getattr(response.metrics, 'retrieval_quality', {})
                 )
             )
 
@@ -184,6 +192,10 @@ async def query(request: QueryRequest):
                 llm_latency=response.metrics.llm_latency,
                 tokens_used=response.metrics.tokens_used,
                 model_name=response.metrics.model_name,
+                # Enhanced metrics from LLM response
+                search_strategies=getattr(response.metrics, 'search_strategies', []),
+                search_metrics=getattr(response.metrics, 'search_metrics', {}),
+                retrieval_quality=getattr(response.metrics, 'retrieval_quality', {}),
                 status="success"
             )
 
@@ -231,7 +243,11 @@ async def financial_query(request: FinancialQueryRequest):
                     llm_latency=response.metrics.llm_latency,
                     total_time=total_time,
                     tokens_used=response.metrics.tokens_used,
-                    model_name=response.metrics.model_name
+                    model_name=response.metrics.model_name,
+                    # Enhanced metrics
+                    search_strategies=getattr(response.metrics, 'search_strategies', []),
+                    search_metrics=getattr(response.metrics, 'search_metrics', {}),
+                    retrieval_quality=getattr(response.metrics, 'retrieval_quality', {})
                 ),
                 query_type="financial",
                 ticker=request.ticker
@@ -246,6 +262,10 @@ async def financial_query(request: FinancialQueryRequest):
                 llm_latency=response.metrics.llm_latency,
                 tokens_used=response.metrics.tokens_used,
                 model_name=response.metrics.model_name,
+                # Enhanced metrics from LLM response
+                search_strategies=getattr(response.metrics, 'search_strategies', []),
+                search_metrics=getattr(response.metrics, 'search_metrics', {}),
+                retrieval_quality=getattr(response.metrics, 'retrieval_quality', {}),
                 status="success"
             )
 
@@ -269,13 +289,34 @@ async def get_active_tickers():
     """Get list of currently active tickers in the system."""
     # This will eventually query the ClickHouse database
     active_tickers = [
-        {"ticker": "AMZN", "name": "Amazon.com Inc", "status": "active"},
-        {"ticker": "COL.AX", "name": "Coles Group Limited", "status": "active"},
-        {"ticker": "JBH.AX", "name": "JB Hi-Fi Limited", "status": "active"},
-        {"ticker": "WOW.AX", "name": "Woolworths Group Limited", "status": "active"},
-        {"ticker": "QAN.AX", "name": "Qantas Airways Limited", "status": "active"},
-        {"ticker": "TLS.AX", "name": "Telstra Corporation Limited", "status": "active"},
-        {"ticker": "GOOGL", "name": "Alphabet Inc", "status": "active"}
+        # Major Cryptocurrencies
+        {"ticker": "BTC-USD", "name": "Bitcoin", "status": "active", "category": "crypto"},
+        {"ticker": "ETH-USD", "name": "Ethereum", "status": "active", "category": "crypto"},
+        {"ticker": "USDT-USD", "name": "Tether", "status": "active", "category": "crypto"},
+        {"ticker": "BNB-USD", "name": "Binance Coin", "status": "active", "category": "crypto"},
+        {"ticker": "SOL-USD", "name": "Solana", "status": "active", "category": "crypto"},
+        {"ticker": "XRP-USD", "name": "Ripple", "status": "active", "category": "crypto"},
+        {"ticker": "DOGE-USD", "name": "Dogecoin", "status": "active", "category": "crypto"},
+        {"ticker": "ADA-USD", "name": "Cardano", "status": "active", "category": "crypto"},
+        {"ticker": "AVAX-USD", "name": "Avalanche", "status": "active", "category": "crypto"},
+        {"ticker": "DOT-USD", "name": "Polkadot", "status": "active", "category": "crypto"},
+        {"ticker": "LINK-USD", "name": "Chainlink", "status": "active", "category": "crypto"},
+        {"ticker": "MATIC-USD", "name": "Polygon", "status": "active", "category": "crypto"},
+        {"ticker": "LTC-USD", "name": "Litecoin", "status": "active", "category": "crypto"},
+
+        # US Stocks
+        {"ticker": "AMZN", "name": "Amazon.com Inc", "status": "active", "category": "us_stock"},
+        {"ticker": "GOOGL", "name": "Alphabet Inc", "status": "active", "category": "us_stock"},
+        {"ticker": "AAPL", "name": "Apple Inc", "status": "active", "category": "us_stock"},
+        {"ticker": "MSFT", "name": "Microsoft Corp", "status": "active", "category": "us_stock"},
+        {"ticker": "META", "name": "Meta Platforms", "status": "active", "category": "us_stock"},
+
+        # Australian Stocks
+        {"ticker": "COL.AX", "name": "Coles Group Limited", "status": "active", "category": "au_stock"},
+        {"ticker": "JBH.AX", "name": "JB Hi-Fi Limited", "status": "active", "category": "au_stock"},
+        {"ticker": "WOW.AX", "name": "Woolworths Group Limited", "status": "active", "category": "au_stock"},
+        {"ticker": "QAN.AX", "name": "Qantas Airways Limited", "status": "active", "category": "au_stock"},
+        {"ticker": "TLS.AX", "name": "Telstra Corporation Limited", "status": "active", "category": "au_stock"}
     ]
 
     return {

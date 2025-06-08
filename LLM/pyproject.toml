@@ -17,11 +17,11 @@ grpcio = "1.60.0"
 protobuf = "4.21.12"
 
 # AI/ML Dependencies - Core LLM functionality
-transformers = "4.37.2"
-torch = "2.2.0"
+transformers = "4.44.0"
+torch = "2.3.0"
 sentence-transformers = "2.2.2"
 accelerate = "0.25.0"
-huggingface-hub = "0.20.0"
+huggingface-hub = "0.24.0"
 
 # LangChain Integration
 langchain = "0.1.0"

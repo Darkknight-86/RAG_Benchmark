@@ -10,6 +10,7 @@ from llm_manager import LLMManager
 from prompt_manager import PromptManager
 from config import MODEL_CONFIG
 
+
 class RAGPipeline:
     """
     Complete RAG pipeline for financial queries.
@@ -50,61 +51,209 @@ class RAGPipeline:
         start_time = time.time()
 
         try:
-            # Step 1: Vector Retrieval
+            # Step 1: Enhanced Vector Retrieval with debugging
             print(f"🔍 Searching for: {query[:50]}...")
             retrieval_start = time.time()
-            retrieved_docs = self.vector_store.similarity_search_with_score(query, k=top_k)
+
+            # Try multiple search strategies for crypto/financial queries
+            retrieved_docs = []
+            search_strategies = []
+
+            # Strategy 1: Standard similarity search
+            try:
+                docs = self.vector_store.similarity_search_with_score(query, k=top_k)
+                retrieved_docs.extend(docs)
+                search_strategies.append(f"similarity_search: {len(docs)} docs")
+            except Exception as e:
+                print(f"⚠️ Standard similarity search failed: {e}")
+                search_strategies.append("similarity_search: failed")
+
+            # Strategy 2: Enhanced crypto search with expanded coverage
+            crypto_terms = [
+                "bitcoin", "btc", "ethereum", "eth", "crypto", "cryptocurrency", "solana", "sol",
+                "cardano", "ada", "ripple", "xrp", "dogecoin", "doge", "avalanche", "avax",
+                "polkadot", "dot", "chainlink", "link", "polygon", "matic", "litecoin", "ltc",
+                "binance", "bnb", "tether", "usdt", "shiba", "shib", "near", "uniswap", "uni",
+                "cosmos", "atom", "filecoin", "fil", "tron", "trx", "aave", "maker", "mkr",
+                "pepe", "floki", "bonk", "stellar", "xlm", "algorand", "algo", "hedera", "hbar",
+                "sandbox", "sand", "decentraland", "mana", "chiliz", "chz", "dai", "arbitrum",
+                "optimism", "aptos", "apt", "sui", "injective", "inj", "celestia", "tia"
+            ]
+
+            if any(term in query.lower() for term in crypto_terms):
+                try:
+                    if hasattr(self.vector_store, 'client'):
+                        crypto_results = self.vector_store.client.query(
+                            """
+                            SELECT chunk, price, change_percent, volume, security, timestamp
+                            FROM rag_chunks_v2
+                            WHERE security LIKE '%-USD'
+                              AND security NOT LIKE '%=X'
+                            ORDER BY timestamp DESC
+                            LIMIT 15
+                            """
+                        )
+
+                        for row in crypto_results.result_rows:
+                            from langchain_core.documents import Document
+                            crypto_name = row[4].replace('-USD', '').replace('USD', '')
+                            indicator = "📈" if float(row[2]) > 0 else "📉" if float(row[2]) < 0 else "➡️"
+                            doc = Document(
+                                page_content=f"""
+                                    {crypto_name} Cryptocurrency Analysis:
+                                    - Current Price: ${row[1]:.4f}
+                                    - 24h Change: {row[2]:.2f}% {indicator}
+                                    - Trading Volume: {row[3]:,}
+                                    - Last Updated: {row[5]}
+                                    - Market Status: Active Trading (24/7)
+                                    - Asset Type: Cryptocurrency
+                                """.strip(),
+                                metadata={
+                                    "security": row[4],
+                                    "price": row[1],
+                                    "change_percent": row[2],
+                                    "volume": row[3],
+                                    "timestamp": row[5],
+                                    "asset_type": "cryptocurrency"
+                                }
+                            )
+                            retrieved_docs.append((doc, 0.9))
+
+                        search_strategies.append(
+                            f"crypto_enhanced: {len(crypto_results.result_rows)} docs"
+                        )
+                except Exception as e:
+                    print(f"⚠️ Enhanced crypto search failed: {e}")
+                    search_strategies.append("crypto_enhanced: failed")
+
+            # Strategy 3: Fallback with broader search
+            if not retrieved_docs:
+                try:
+                    broad_results = self.vector_store.client.query(
+                        """
+                        SELECT chunk, security, timestamp
+                        FROM rag_chunks_v2
+                        ORDER BY timestamp DESC
+                        LIMIT 5
+                        """
+                    )
+                    for row in broad_results.result_rows:
+                        from langchain_core.documents import Document
+                        doc = Document(
+                            page_content=f"Recent financial data for {row[1]}: {row[0]}",
+                            metadata={"security": row[1], "timestamp": row[2]}
+                        )
+                        retrieved_docs.append((doc, 0.6))
+                    search_strategies.append(
+                        f"broad_search: {len(broad_results.result_rows)} docs"
+                    )
+                except Exception as e:
+                    print(f"⚠️ Broad search failed: {e}")
+                    search_strategies.append("broad_search: failed")
+
             retrieval_time = time.time() - retrieval_start
+            print(f"📊 Search strategies used: {', '.join(search_strategies)}")
+            print(f"📄 Total documents found: {len(retrieved_docs)}")
+
+            # Retrieval quality assessment
+            retrieval_quality = {}
+            if retrieved_docs:
+                avg_rel = sum(score for _, score in retrieved_docs) / len(retrieved_docs)
+                high_q = [d for d, s in retrieved_docs if s > 0.7]
+                print("📈 Retrieval Quality Assessment:")
+                print(f"  - Average relevance: {avg_rel:.3f}")
+                print(f"  - High-quality docs: {len(high_q)}/{len(retrieved_docs)}")
+
+                # Store retrieval quality metrics for response
+                retrieval_quality = {
+                    "docs_found": len(retrieved_docs),
+                    "avg_relevance": avg_rel,
+                    "high_quality_docs": len(high_q),
+                    "high_quality_ratio": len(high_q) / len(retrieved_docs)
+                }
+            else:
+                retrieval_quality = {
+                    "docs_found": 0,
+                    "avg_relevance": 0.0,
+                    "high_quality_docs": 0,
+                    "high_quality_ratio": 0.0
+                }
+
+            # Parse search strategies for structured metrics
+            search_metrics = {}
+            for strategy in search_strategies:
+                if ":" in strategy:
+                    strategy_name, strategy_result = strategy.split(":", 1)
+                    strategy_name = strategy_name.strip()
+                    if "docs" in strategy_result:
+                        # Extract number of docs found
+                        docs_count = strategy_result.strip().split()[0]
+                        try:
+                            search_metrics[strategy_name] = int(docs_count)
+                        except:
+                            search_metrics[strategy_name] = strategy_result.strip()
+                    else:
+                        search_metrics[strategy_name] = strategy_result.strip()
 
             if not retrieved_docs:
                 return {
-                    "answer": "I couldn't find relevant information to answer your question.",
+                    "answer": (
+                        f"No relevant data. Strategies: {', '.join(search_strategies)}."
+                    ),
                     "sources": [],
                     "metrics": {
                         "vector_latency": retrieval_time,
                         "llm_latency": 0.0,
                         "total_time": time.time() - start_time,
                         "tokens_used": 0,
-                        "model_name": model_name or MODEL_CONFIG["default_model"]
+                        "model_name": model_name or MODEL_CONFIG["default_model"],
+                        "search_strategies": search_strategies,
+                        "search_metrics": search_metrics,
+                        "retrieval_quality": retrieval_quality
                     }
                 }
 
-            print(f"📄 Found {len(retrieved_docs)} relevant documents")
-
-            # Step 2: Prepare Context
-            context_docs = []
-            sources = []
+            # Prepare context with length management
+            context_parts = []
+            total_length = 0
+            max_context_length = 3000  # Conservative limit for prompt + context
 
             for doc, score in retrieved_docs:
-                context_docs.append(doc.page_content)
-                sources.append({
+                content = doc.page_content
+                if total_length + len(content) < max_context_length:
+                    context_parts.append(content)
+                    total_length += len(content)
+                else:
+                    # Truncate the last document to fit
+                    remaining_space = max_context_length - total_length
+                    if remaining_space > 100:  # Only add if meaningful space left
+                        context_parts.append(content[:remaining_space] + "...")
+                    break
+
+            context = "\n\n".join(context_parts)
+            sources = [
+                {
                     "content": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content,
                     "score": float(score),
                     "metadata": dict(doc.metadata)
-                })
+                }
+                for doc, score in retrieved_docs
+            ]
 
-            context = "\n\n".join(context_docs)
-
-            # Step 3: Generate Response
+            # Generate response
             print("🧠 Generating LLM response...")
             llm_start = time.time()
-
-            # Get appropriate prompt template
             prompt = self.prompt_manager.format_financial_prompt(query, context)
-
-            # Generate response using LLM
-            response_text, response_latency, tokens_used = self.llm_manager.generate_response(
+            response_text, _, tokens = self.llm_manager.generate_response(
                 prompt=prompt,
                 model_name=model_name,
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-
             llm_time = time.time() - llm_start
             total_time = time.time() - start_time
 
-            print(f"✅ Query completed in {total_time:.3f}s")
-
+            print(f"✅ Completed in {total_time:.3f}s")
             return {
                 "answer": response_text,
                 "sources": sources,
@@ -112,15 +261,18 @@ class RAGPipeline:
                     "vector_latency": retrieval_time,
                     "llm_latency": llm_time,
                     "total_time": total_time,
-                    "tokens_used": tokens_used,
-                    "model_name": model_name or MODEL_CONFIG["default_model"]
+                    "tokens_used": tokens,
+                    "model_name": model_name or MODEL_CONFIG["default_model"],
+                    "search_strategies": search_strategies,
+                    "search_metrics": search_metrics,
+                    "retrieval_quality": retrieval_quality
                 }
             }
 
         except Exception as e:
-            print(f"❌ Error processing query: {e}")
+            print(f"❌ Error: {e}")
             return {
-                "answer": f"I encountered an error processing your request: {str(e)}",
+                "answer": f"Error: {e}",
                 "sources": [],
                 "metrics": {
                     "vector_latency": 0.0,
@@ -128,75 +280,79 @@ class RAGPipeline:
                     "total_time": time.time() - start_time,
                     "tokens_used": 0,
                     "model_name": model_name or MODEL_CONFIG["default_model"],
+                    "search_strategies": [],
+                    "search_metrics": {},
+                    "retrieval_quality": {
+                        "docs_found": 0,
+                        "avg_relevance": 0.0,
+                        "high_quality_docs": 0,
+                        "high_quality_ratio": 0.0
+                    },
                     "error": str(e)
                 }
             }
 
     def get_financial_context(self, query: str, ticker: Optional[str] = None) -> List[Dict]:
-        """
-        Get financial-specific context for a query.
-        Can filter by specific ticker if provided.
-        """
+        """Get financial-specific context"""
         try:
             if ticker:
                 print(f"💰 Getting context for ticker: {ticker}")
-                # Use optimized search for specific ticker
-                results = self.vector_store.client.query(f"""
+                results = self.vector_store.client.query(
+                    f"""
                     SELECT chunk, price, change_percent, volume, timestamp,
                            cosineDistance(embedding,
-                               {self.vector_store.embedding_model.encode([query])[0].tolist()}) as distance
+                               {self.vector_store.embedding_model.encode([query])[0].tolist()})
+                      AS distance
                     FROM rag_chunks_v2
                     WHERE security = '{ticker}'
                     ORDER BY distance ASC
                     LIMIT 10
-                """)
-
+                    """
+                )
                 return [
                     {
-                        "content": row[0],
-                        "price": float(row[1]),
-                        "change_percent": float(row[2]),
-                        "volume": int(row[3]),
-                        "timestamp": row[4],
-                        "score": 1.0 - row[5]  # Convert distance to similarity
+                        "content": r[0],
+                        "price": float(r[1]),
+                        "change_percent": float(r[2]),
+                        "volume": int(r[3]),
+                        "timestamp": r[4],
+                        "score": 1.0 - r[5]
                     }
-                    for row in results.result_rows
+                    for r in results.result_rows
                 ]
             else:
-                # Regular semantic search
                 docs = self.vector_store.similarity_search_with_score(query, k=10)
                 return [
                     {
-                        "content": doc.page_content,
-                        "score": score,
-                        "metadata": doc.metadata
+                        "content": d.page_content,
+                        "score": s,
+                        "metadata": d.metadata
                     }
-                    for doc, score in docs
+                    for d, s in docs
                 ]
-
         except Exception as e:
-            print(f"❌ Error getting financial context: {e}")
+            print(f"❌ Context error: {e}")
             return []
 
     def get_health_status(self) -> Dict[str, Any]:
-        """Get health status of RAG pipeline components"""
+        """Health status of pipeline components"""
         status = {
             "vector_store": "unknown",
             "llm_manager": "unknown",
             "overall": "unknown"
         }
 
+        # Test vector store
         try:
-            # Test vector store
-            test_results = self.vector_store.similarity_search("test", k=1)
+            self.vector_store.similarity_search("test", k=1)
             status["vector_store"] = "healthy"
         except:
             status["vector_store"] = "unhealthy"
 
+        # Test LLM manager
         try:
-            # Test LLM manager
-            # This is a basic check - you might want to make it more comprehensive
-            status["llm_manager"] = "healthy"
+            # Basic health check for LLM manager
+            status["llm_manager"] = "healthy" if self.llm_manager else "unhealthy"
         except:
             status["llm_manager"] = "unhealthy"
 

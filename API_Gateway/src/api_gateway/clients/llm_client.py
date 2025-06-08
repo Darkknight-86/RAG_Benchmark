@@ -32,7 +32,7 @@ class LLMClient:
             logger.info("Closing gRPC channel")
             self.channel.close()
 
-    def query(self, query_text: str, model_name: str = "google/flan-t5-small", top_k: int = 5, temperature: float = 0.7, max_tokens: int = 200):
+    def query(self, query_text: str, model_name: str = "meta-llama/Llama-3.2-1B-Instruct", top_k: int = 5, temperature: float = 0.7, max_tokens: int = 1000):
         """Send a query to the LLM service."""
         if not self.stub:
             logger.error("LLMClient not initialized (use with-statement)")
