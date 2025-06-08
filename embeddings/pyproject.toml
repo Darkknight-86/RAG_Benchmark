@@ -1,41 +1,51 @@
 [tool.poetry]
-name = "rag"
+name = "financial-rag-embeddings"
 version = "0.1.0"
-description = "RAG system for stock data"
+description = "Financial RAG embeddings service with real-time streaming and ClickHouse vector storage"
 authors = [
     "Darkknight-86 <bewick.j@northeastern.edu>"
 ]
 readme = "README.md"
-packages = [{include = "rag", from = "src"}]
+packages = [{include = "*", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-fastapi = "^0.104.1"
-uvicorn = "^0.24.0"
-boto3 = "^1.29.3"
-clickhouse-connect = "^0.6.0"
-python-dotenv = "^1.0.0"
-sentence-transformers = "^2.2.2"
+python = ">=3.11,<3.13"
+
+# Core Dependencies - Actually Used
+clickhouse-connect = "0.6.0"
+python-dotenv = "1.0.0"
+grpcio = "1.60.0"
+protobuf = "4.21.12"
+numpy = "1.26.4"
+requests = "2.31.0"
+setuptools = "80.9.0"
+
+# AI/ML Dependencies - Core embeddings functionality
+sentence-transformers = "2.6.1"
+transformers = "4.37.2"
+torch = "2.2.0"
+huggingface-hub = "0.20.0"
 langchain = "0.1.0"
 langchain-core = "0.1.8"
 langchain-community = "0.0.10"
-numpy = "1.24.3"
-pandas = "2.0.3"
-pytest = "^7.4.3"
-pytest-asyncio = "^0.21.1"
-httpx = "^0.25.1"
-langsmith = ">=0.0.63,<0.1.0"
-yliveticker = "^0.3.0"
-protobuf = "3.20.3"
+
+# Data Processing - Optional but useful
+pandas = "2.2.3"
+yfinance = "0.2.18"
+
+# Real-time Streaming - REQUIRED for live data
+yliveticker = "0.3.0"
+
+# Optional Adapter Dependencies (uncomment if needed)
+# psycopg2-binary = "2.9.9"      # For PostgreSQL adapter
+# opensearch-py = "2.4.0"        # For OpenSearch adapter
+# cassandra-driver = "3.29.1"    # For Cassandra adapter
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
-pytest-asyncio = "^0.21.1"
-pytest-cov = "^4.1.0"
-black = "^23.12.1"
-isort = "^5.13.2"
-mypy = "^1.8.0"
-ruff = "^0.2.1"
+pytest = "7.4.3"
+pytest-asyncio = "0.21.1"
+black = "23.12.1"
+ruff = "0.6.0"
 
 [build-system]
 requires = ["poetry-core"]

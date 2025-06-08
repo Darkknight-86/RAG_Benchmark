@@ -6,7 +6,7 @@ import logging
 import os
 from flask import Flask
 from dotenv import load_dotenv
-from .routes import register_routes
+from api_gateway.routes import register_routes
 
 load_dotenv()
 

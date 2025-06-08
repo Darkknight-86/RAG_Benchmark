@@ -1,6 +1,7 @@
 import boto3
-from embeddings.src.rag.specterChunker import SpecterChunker
-from embeddings.src.rag.specterEmbedder import SpecterEmbedder
+# Legacy imports - these classes were moved/removed during restructuring
+# from embeddings.src.rag.specterChunker import SpecterChunker
+# from embeddings.src.rag.specterEmbedder import SpecterEmbedder
 from dotenv import load_dotenv
 import os
 

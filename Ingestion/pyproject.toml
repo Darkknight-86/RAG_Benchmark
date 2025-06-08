@@ -1,34 +1,59 @@
-[project]
-name = "rag"
+[tool.poetry]
+name = "financial-rag-ingestion"
 version = "0.1.0"
-description = ""
+description = "Financial RAG Ingestion Service for document processing and data ingestion"
 authors = [
-    {name = "Darkknight-86", email = "bewick.j@northeastern.edu"},
-    {name = "trentwiles", email = "wilest7@gmail.com"},
-    {name = "andrewd-young", email = "young.andre@northeastern.edu"}
+    "Darkknight-86 <bewick.j@northeastern.edu>",
+    "trentwiles <wilest7@gmail.com>",
+    "andrewd-young <young.andre@northeastern.edu>"
 ]
 readme = "README.md"
-requires-python = ">=3.9,<3.13"
-dependencies = [
-    "opensearch-py (>=2.8.0,<3.0.0)",
-    "python-dotenv (>=1.1.0,<2.0.0)",
-    "requests (>=2.32.3,<3.0.0)",
-    "boto3 (>=1.38.26,<2.0.0)",
-    "llama-parse (>=0.6.23,<0.7.0)",
-    "fastapi (>=0.115.12,<0.116.0)",
-    "grpcio (>=1.71.0,<2.0.0)",
-    "grpcio-tools (>=1.71.0,<2.0.0)",
-    "protobuf (>=6.31.1,<7.0.0)",
-    "dotenv (>=0.9.9,<0.10.0)"
-]
+packages = [{include = "*", from = "src"}]
 
-[tool.poetry]
-packages = [
-    {include = "rag", from = "src"},
-    {include = "grpc", from = "src"}
-]
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
 
+# Core Dependencies - Actually Used
+python-dotenv = "1.0.1"
+requests = "2.31.0"
+boto3 = "1.38.26"
+llama-parse = "0.6.23"
+
+# Optional Dependencies (uncomment if needed)
+# opensearch-py = "2.8.0"          # For OpenSearch integration
+# fastapi = "0.115.12"             # For web API
+# grpcio = "1.60.0"                # For gRPC services
+# grpcio-tools = "1.60.0"          # For gRPC development
+# protobuf = "3.20.3"              # For protocol buffers
+
+[tool.poetry.group.dev.dependencies]
+pytest = "7.4.3"
+pytest-asyncio = "0.21.1"
+black = "23.12.1"
+ruff = "0.6.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "B", "I"]
+ignore = []

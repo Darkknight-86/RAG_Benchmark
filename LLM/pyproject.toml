@@ -1,44 +1,40 @@
 [tool.poetry]
-name = "financial-rag-api-gateway"
+name = "financial-rag-llm"
 version = "0.1.0"
-description = "Financial RAG API Gateway with enhanced monitoring, WebSocket streaming, and financial query endpoints"
+description = "Financial RAG LLM Service with enhanced processing and gRPC interface"
 authors = [
     "Darkknight-86 <bewick.j@northeastern.edu>"
 ]
 readme = "README.md"
-packages = [{include = "api_gateway", from = "src"}]
+packages = [{include = "*", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 
-# Core Dependencies
+# Core Dependencies - Actually Used
 python-dotenv = "1.0.0"
 grpcio = "1.60.0"
-grpcio-tools = "1.60.0"
 protobuf = "4.21.12"
 
-# Web Framework & API
-fastapi = "0.104.1"
-uvicorn = "0.24.0"
+# AI/ML Dependencies - Core LLM functionality
+transformers = "4.37.2"
+torch = "2.2.0"
+sentence-transformers = "2.2.2"
+accelerate = "0.25.0"
+huggingface-hub = "0.20.0"
 
-# Dashboard & Visualization
-streamlit = "1.28.0"
-plotly = "5.17.0"
+# LangChain Integration
+langchain = "0.1.0"
+langchain-core = "0.1.10"
+langchain-community = "0.0.13"
 
-# Real-time Communication
-websockets = "11.0.2"
-
-# Data Processing - Core functionality
+# Data Processing
 pandas = "2.2.3"
 requests = "2.31.0"
 
-# System Monitoring
-psutil = "5.9.8"
-
 # Optional Dependencies (uncomment if needed)
+clickhouse-connect = "0.6.0"     # For ClickHouse integration
 # numpy = "1.26.4"                 # For numerical operations
-# prometheus-client = "0.19.0"     # For Prometheus metrics
-# aiohttp = "3.9.0"               # For async HTTP
 
 [tool.poetry.group.dev.dependencies]
 pytest = "7.4.3"
@@ -71,9 +67,3 @@ line-length = 100
 target-version = "py311"
 select = ["E", "F", "B", "I"]
 ignore = []
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "--cov=src/api_gateway --cov-report=term-missing"

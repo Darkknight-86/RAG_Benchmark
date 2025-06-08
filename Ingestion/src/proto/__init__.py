@@ -1,0 +1,2 @@
+import ingestion_service_pb2
+import ingestion_service_pb2_grpc

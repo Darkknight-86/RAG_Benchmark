@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
-from rag.stockChunker import StockChunker
-from rag.stockEmbedder import StockEmbedder
-from rag.utils import try_parse_json_or_text
+from stockChunker import StockChunker
+from stockEmbedder import StockEmbedder
+from utils import try_parse_json_or_text
 
 # Setup
 load_dotenv()

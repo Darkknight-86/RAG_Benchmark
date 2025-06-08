@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import grpc
-from api_gateway.grpc import rag_service_pb2 as pb2  # type: ignore
-from api_gateway.grpc import rag_service_pb2_grpc as pb2_grpc  # type: ignore
+from api_gateway.proto import rag_service_pb2 as pb2  # type: ignore
+from api_gateway.proto import rag_service_pb2_grpc as pb2_grpc  # type: ignore
 
 
 class IngestionClient:

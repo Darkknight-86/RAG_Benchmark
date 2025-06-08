@@ -7,15 +7,15 @@ This module provides a client for communicating with the LLM service.
 from __future__ import annotations
 import logging
 import grpc
-from api_gateway.grpc import rag_service_pb2 as pb2  # type: ignore
-from api_gateway.grpc import rag_service_pb2_grpc as pb2_grpc  # type: ignore
+from api_gateway.proto import rag_service_pb2 as pb2  # type: ignore
+from api_gateway.proto import rag_service_pb2_grpc as pb2_grpc  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 class LLMClient:
     """gRPC client wrapper for the LLM micro-service."""
 
-    def __init__(self, host: str = "llm", port: int = 50054) -> None:
+    def __init__(self, host: str = "localhost", port: int = 50054) -> None:
         self.address = f"{host}:{port}"
         self.channel: grpc.Channel | None = None
         self.stub: pb2_grpc.RAGServiceStub | None = None
