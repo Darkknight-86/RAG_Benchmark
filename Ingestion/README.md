@@ -1,4 +1,8 @@
 # Ingestion Micro-service
+
+## DEPRECATION NOTICE
+* This service has been deprecated in favor of streaming. This code, which runs embeddings on computer science PDFs has been kept here for reference. *
+
 _Raw data acquisition → S3 / Object storage_
 
 ---
