@@ -1,0 +1,2 @@
+import rag_service_pb2
+import rag_service_pb2_grpc

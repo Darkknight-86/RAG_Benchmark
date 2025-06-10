@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package embeddings;
+
+// Service definition for the Embeddings service
+service EmbeddingsService {
+  // Generate embeddings for text
+  rpc GetEmbeddings(EmbeddingsRequest) returns (EmbeddingsResponse) {}
+
+  // Store embeddings in vector database
+  rpc StoreEmbeddings(StoreRequest) returns (StoreResponse) {}
+
+  // Search for similar vectors
+  rpc SearchSimilar(SearchRequest) returns (SearchResponse) {}
+}
+
+// Request to generate embeddings
+message EmbeddingsRequest {
+  string text = 1;
+}
+
+// Response with generated embeddings
+message EmbeddingsResponse {
+  repeated float embeddings = 1;
+}
+
+// Request to store embeddings
+message StoreRequest {
+  string id = 1;
+  string text = 2;
+  repeated float embeddings = 3;
+  map<string, string> metadata = 4;
+}
+
+// Response for store operation
+message StoreResponse {
+  bool success = 1;
+}
+
+// Request to search similar vectors
+message SearchRequest {
+  repeated float embeddings = 1;
+  int32 limit = 2;
+}
+
+// Response with search results
+message SearchResponse {
+  repeated SearchResult results = 1;
+}
+
+// Individual search result
+message SearchResult {
+  string id = 1;
+  string text = 2;
+  map<string, string> metadata = 3;
+  float similarity = 4;
+}

@@ -1,37 +1,74 @@
-[project]
-name = "rag"
+[tool.poetry]
+name = "financial-rag-embeddings"
 version = "0.1.0"
-description = ""
+description = "Financial RAG embeddings service with real-time streaming and ClickHouse vector storage"
 authors = [
-    {name = "Darkknight-86", email = "bewick.j@northeastern.edu"}
+    "Darkknight-86 <bewick.j@northeastern.edu>"
 ]
 readme = "README.md"
-requires-python = ">=3.9,<3.13"
-dependencies = [
-    "fastapi (>=0.115.12,<0.116.0)",
-    "uvicorn (>=0.34.2,<0.35.0)",
-    "boto3 (>=1.38.24,<2.0.0)",
-    "langchain (>=0.3.25,<0.4.0)",
-    "clickhouse-connect (>=0.8.17,<0.9.0)",
-    "grpcio (>=1.62.0,<2.0.0)",
-    "grpcio-tools (>=1.62.0,<2.0.0)",
-    "protobuf (>=4.25.3,<5.0.0)",
-    "dotenv (>=0.9.9,<0.10.0)",
-    "python-dotenv (>=1.0.0,<2.0.0)",
-    "prometheus-client (>=0.20.0,<1.0.0)",
-    "psycopg2-binary (>=2.9.9,<3.0.0)",
-    "pgvector (>=0.2.3,<0.3.0)",
-    "numpy (>=1.24.0,<2.0.0)",
-    "sentence-transformers (>=4.1.0,<5.0.0)",
-    "azure-storage-blob (>=12.25.1,<13.0.0)"
-]
+packages = [{include = "*", from = "src"}]
 
-[tool.poetry]
-packages = [{include = "rag", from = "src"}]
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+
+# Core Dependencies - Actually Used
+clickhouse-connect = "0.6.0"
+python-dotenv = "1.0.0"
+grpcio = "1.60.0"
+protobuf = "4.21.12"
+numpy = "1.26.4"
+requests = "2.31.0"
+setuptools = "80.9.0"
+
+# AI/ML Dependencies - Core embeddings functionality
+sentence-transformers = "2.6.1"
+transformers = "4.37.2"
+torch = "2.2.0"
+huggingface-hub = "0.20.0"
+langchain = "0.1.0"
+langchain-core = "0.1.8"
+langchain-community = "0.0.10"
+
+# Data Processing - Optional but useful
+pandas = "2.2.3"
+yfinance = "0.2.18"
+
+# Real-time Streaming - REQUIRED for live data
+yliveticker = "0.3.0"
+
+# Optional Adapter Dependencies (uncomment if needed)
+# psycopg2-binary = "2.9.9"      # For PostgreSQL adapter
+# opensearch-py = "2.4.0"        # For OpenSearch adapter
+# cassandra-driver = "3.29.1"    # For Cassandra adapter
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.4.0"
+pytest = "7.4.3"
+pytest-asyncio = "0.21.1"
+black = "23.12.1"
+ruff = "0.6.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "B", "I"]
+ignore = []

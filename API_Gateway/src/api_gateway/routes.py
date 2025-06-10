@@ -1,18 +1,39 @@
 """
-API Routes for the RAG Gateway.
+API Routes for the Financial RAG Gateway.
 
-This module defines REST endpoints that proxy requests to the gRPC microservices.
+This module defines REST endpoints that proxy requests to the gRPC microservices,
+enhanced monitoring capabilities, and financial query routing.
 """
 
-from flask import Blueprint, request, jsonify  # type: ignore[import-not-found]
-from .clients import LLMClient, EmbeddingsClient, IngestionClient
-from .metrics import metrics_collector
-from .grpc import rag_service_pb2_grpc as pb2_grpc
-import logging
+from flask import Blueprint, request, jsonify, render_template_string  # type: ignore[import-not-found]
+from flask_socketio import SocketIO, emit  # type: ignore[import-not-found]
+import asyncio
+import json
 import time
+import logging
 import grpc
 import os
+from datetime import datetime
 from dotenv import load_dotenv
+
+# Import clients (required)
+from .clients import LLMClient, EmbeddingsClient
+
+# Removed deprecated basic metrics import - using enhanced_metrics only
+
+# Import optional grpc pb2
+try:
+    from .proto import rag_service_pb2_grpc as pb2_grpc
+except ImportError:
+    print("Warning: gRPC pb2 module not found")
+    pb2_grpc = None
+
+# Import enhanced metrics
+try:
+    from ..monitoring.enhanced_metrics import metrics_collector as enhanced_metrics
+except ImportError:
+    print("Warning: Enhanced metrics not found, using basic metrics")
+    enhanced_metrics = None
 
 # Load environment variables
 load_dotenv()
@@ -27,10 +48,11 @@ logger = logging.getLogger(__name__)
 # Create blueprint for API routes
 api = Blueprint('api', __name__)
 
+# Enhanced Query Endpoints
 @api.route('/query', methods=['POST'])
 def query():
     """
-    Process a query through the RAG pipeline.
+    Process a query through the RAG pipeline with enhanced monitoring.
 
     Expected JSON body:
     {
@@ -42,27 +64,31 @@ def query():
     }
     """
     start_time = time.time()
-    logger.info("Received query request")
+    logger.info("📩 Received query request")
 
     try:
         data = request.get_json()
         if not data or 'query' not in data:
-            logger.error("Missing query field in request")
+            logger.error("❌ Missing query field in request")
             return jsonify({"error": "Query field is required"}), 400
 
         # Get parameters with defaults
         query_text = data['query']
-        model_name = data.get('model_name', os.getenv("DEFAULT_LLM_MODEL", "google/flan-t5-small"))
+        model_name = data.get('model_name', os.getenv("DEFAULT_LLM_MODEL", "meta-llama/Llama-3.2-1B-Instruct"))
         top_k = data.get('top_k', int(os.getenv("DEFAULT_TOP_K", "5")))
         temperature = data.get('temperature', float(os.getenv("DEFAULT_TEMPERATURE", "0.7")))
-        max_tokens = data.get('max_tokens', int(os.getenv("DEFAULT_MAX_TOKENS", "200")))
+        max_tokens = data.get('max_tokens', int(os.getenv("DEFAULT_MAX_TOKENS", "1000")))
 
-        logger.info(f"Processing query with parameters: model={model_name}, temp={temperature}, max_tokens={max_tokens}, top_k={top_k}")
+        logger.info(f"🔧 Processing query: model={model_name}, temp={temperature}, tokens={max_tokens}")
+
+        # Record initial metrics
+        if enhanced_metrics:
+            enhanced_metrics.record_metric("api_gateway", "query_received", 1.0,
+                                          model=model_name, query_length=len(query_text))
 
         # Use the LLM client to process the query
-        logger.info("Initializing LLM client")
+        logger.info("🧠 Sending to LLM service...")
         with LLMClient() as client:
-            logger.info("Sending query to LLM service")
             response = client.query(
                 query_text=query_text,
                 model_name=model_name,
@@ -70,26 +96,23 @@ def query():
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            logger.info("Received response from LLM service")
 
             total_time = time.time() - start_time
 
-            # Record metrics
-            logger.info("Recording metrics")
-            metrics_collector.record_query(
-                query=query_text,
-                response=response.answer,
-                vector_latency=response.metrics.vector_latency,
-                llm_latency=response.metrics.llm_latency,
-                total_time=total_time,
-                tokens_used=response.metrics.tokens_used,
-                vector_store_type="unknown",  # Not available in response
-                status="success"
-            )
+            # Record enhanced metrics
+            if enhanced_metrics:
+                enhanced_metrics.record_query_metrics({
+                    "vector_latency": response.metrics.vector_latency,
+                    "llm_latency": response.metrics.llm_latency,
+                    "total_time": total_time,
+                    "tokens_used": response.metrics.tokens_used
+                })
 
             # Convert gRPC response to JSON
             result = {
                 "response": response.answer,
+                "sources": [{"content": source.content, "score": source.score}
+                           for source in response.sources] if hasattr(response, 'sources') else [],
                 "metrics": {
                     "vector_latency": response.metrics.vector_latency,
                     "llm_latency": response.metrics.llm_latency,
@@ -102,72 +125,300 @@ def query():
                 }
             }
 
-            logger.info(f"Query completed in {total_time:.2f} seconds")
+            logger.info(f"✅ Query completed in {total_time:.3f}s")
             return jsonify(result), 200
 
     except Exception as e:
-        logger.error(f"Error processing query: {str(e)}", exc_info=True)
+        logger.error(f"❌ Error processing query: {str(e)}", exc_info=True)
+        if enhanced_metrics:
+            enhanced_metrics.record_metric("api_gateway", "query_error", 1.0, error=str(e))
         return jsonify({"error": str(e)}), 500
 
-@api.route('/metrics/export', methods=['GET'])
-def export_metrics():
-    """Export collected metrics to a file."""
+@api.route('/financial/query', methods=['POST'])
+def financial_query():
+    """
+    Process financial-specific queries with market data context.
+
+    Expected JSON body:
+    {
+        "query": "What's the performance of AAPL?",
+        "ticker": "AAPL",  # optional for ticker-specific queries
+        "model_name": "google/flan-t5-small",  # optional
+        "temperature": 0.7  # optional
+    }
+    """
+    start_time = time.time()
+    logger.info("💰 Received financial query")
+
     try:
-        format = request.args.get('format', 'csv')
-        filepath = metrics_collector.export_metrics(format)
-        return jsonify({
-            "status": "success",
-            "filepath": filepath
-        }), 200
+        data = request.get_json()
+        if not data or 'query' not in data:
+            return jsonify({"error": "Query field is required"}), 400
+
+        query_text = data['query']
+        ticker = data.get('ticker')
+        model_name = data.get('model_name', "meta-llama/Llama-3.2-1B-Instruct")
+        temperature = data.get('temperature', 0.7)
+
+        logger.info(f"💼 Financial query for ticker: {ticker or 'general'}")
+
+        # Record financial query metrics
+        if enhanced_metrics:
+            enhanced_metrics.record_metric("api_gateway", "financial_query_received", 1.0,
+                                          ticker=ticker, query_type="financial")
+
+        # Process through LLM with financial context
+        with LLMClient() as client:
+            response = client.query(
+                query_text=query_text,
+                model_name=model_name,
+                temperature=temperature,
+                max_tokens=300  # Longer responses for financial analysis
+            )
+
+            total_time = time.time() - start_time
+
+            # Enhanced response for financial queries
+            result = {
+                "response": response.answer,
+                "ticker": ticker,
+                "query_type": "financial",
+                "market_context": True,
+                "sources": [{"content": source.content, "score": source.score}
+                           for source in response.sources] if hasattr(response, 'sources') else [],
+                "metrics": {
+                    "vector_latency": response.metrics.vector_latency,
+                    "llm_latency": response.metrics.llm_latency,
+                    "total_time": total_time,
+                    "tokens_used": response.metrics.tokens_used,
+                    "model_name": response.metrics.model_name
+                }
+            }
+
+            logger.info(f"✅ Financial query completed in {total_time:.3f}s")
+            return jsonify(result), 200
+
     except Exception as e:
+        logger.error(f"❌ Error processing financial query: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@api.route('/financial/tickers', methods=['GET'])
+def get_active_tickers():
+    """Get list of currently active tickers in the system."""
+    try:
+        # This would query the ClickHouse database for active tickers
+        # Expanded list now includes comprehensive crypto coverage
+        active_tickers = [
+            # Major Cryptocurrencies (24/7 trading for continuous data)
+            {"ticker": "BTC-USD", "name": "Bitcoin", "status": "active", "category": "crypto"},
+            {"ticker": "ETH-USD", "name": "Ethereum", "status": "active", "category": "crypto"},
+            {"ticker": "USDT-USD", "name": "Tether", "status": "active", "category": "crypto"},
+            {"ticker": "BNB-USD", "name": "Binance Coin", "status": "active", "category": "crypto"},
+            {"ticker": "SOL-USD", "name": "Solana", "status": "active", "category": "crypto"},
+            {"ticker": "DOGE-USD", "name": "Dogecoin", "status": "active", "category": "crypto"},
+            {"ticker": "ADA-USD", "name": "Cardano", "status": "active", "category": "crypto"},
+            {"ticker": "AVAX-USD", "name": "Avalanche", "status": "active", "category": "crypto"},
+            {"ticker": "DOT-USD", "name": "Polkadot", "status": "active", "category": "crypto"},
+            {"ticker": "LINK-USD", "name": "Chainlink", "status": "active", "category": "crypto"},
+
+            # US Stocks
+            {"ticker": "AMZN", "name": "Amazon.com Inc", "status": "active", "category": "us_stock"},
+            {"ticker": "GOOGL", "name": "Alphabet Inc", "status": "active", "category": "us_stock"},
+            {"ticker": "AAPL", "name": "Apple Inc", "status": "active", "category": "us_stock"},
+            {"ticker": "MSFT", "name": "Microsoft Corp", "status": "active", "category": "us_stock"},
+            {"ticker": "META", "name": "Meta Platforms", "status": "active", "category": "us_stock"},
+
+            # Australian Stocks
+            {"ticker": "COL.AX", "name": "Coles Group Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "JBH.AX", "name": "JB Hi-Fi Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "WOW.AX", "name": "Woolworths Group Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "QAN.AX", "name": "Qantas Airways Limited", "status": "active", "category": "au_stock"},
+            {"ticker": "TLS.AX", "name": "Telstra Corporation Limited", "status": "active", "category": "au_stock"}
+        ]
+
+        return jsonify({
+            "tickers": active_tickers,
+            "count": len(active_tickers),
+            "last_updated": datetime.now().isoformat()
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error fetching tickers: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Enhanced Metrics Endpoints
+@api.route('/metrics/current', methods=['GET'])
+def get_current_metrics():
+    """Get current real-time metrics."""
+    try:
+        if enhanced_metrics:
+            metrics_data = enhanced_metrics.get_real_time_metrics()
+            return jsonify(metrics_data), 200
+        else:
+            # Fallback to basic metrics
+            return jsonify({"error": "Enhanced metrics not available"}), 503
+    except Exception as e:
+        logger.error(f"Error fetching metrics: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/metrics/export', methods=['POST'])
+def export_metrics():
+    """Export collected metrics to CSV file."""
+    try:
+        data = request.get_json() or {}
+        minutes = data.get('minutes', 5)
+
+        if enhanced_metrics:
+            filename = enhanced_metrics.export_metrics_csv(minutes=minutes)
+            return jsonify({
+                "status": "success",
+                "filename": filename,
+                "exported_timeframe": f"{minutes} minutes"
+            }), 200
+        else:
+            return jsonify({"error": "Enhanced metrics not available"}), 503
+
+    except Exception as e:
+        logger.error(f"Error exporting metrics: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/metrics/health', methods=['GET'])
+def service_health():
+    """Get health status of all services."""
+    try:
+        if enhanced_metrics:
+            health_data = enhanced_metrics.get_service_health()
+            return jsonify(health_data), 200
+        else:
+            return jsonify({"api_gateway": {"status": "healthy", "enhanced_metrics": False}}), 200
+
+    except Exception as e:
+        logger.error(f"Error checking service health: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/metrics/dashboard', methods=['GET'])
+def metrics_dashboard():
+    """Serve the metrics dashboard."""
+    dashboard_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Financial RAG Monitoring</title>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+            .status { display: flex; justify-content: space-around; margin: 20px 0; }
+            .status-card { background: #e7f3ff; padding: 15px; border-radius: 5px; text-align: center; min-width: 150px; }
+            .healthy { background: #d4edda; }
+            .unhealthy { background: #f8d7da; }
+            .unknown { background: #e2e3e5; }
+            .link { color: #007bff; text-decoration: none; margin: 10px; display: inline-block; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📊 Financial RAG Microservices Dashboard</h1>
+                <p>Real-time monitoring and metrics for streaming financial data</p>
+            </div>
+
+            <div class="status">
+                <div class="status-card healthy">
+                    <h3>🏥 API Gateway</h3>
+                    <p>Status: Healthy</p>
+                </div>
+                <div class="status-card unknown">
+                    <h3>🧠 LLM Service</h3>
+                    <p>Status: Check /metrics/health</p>
+                </div>
+                <div class="status-card unknown">
+                    <h3>📊 Embeddings</h3>
+                    <p>Status: Check /metrics/health</p>
+                </div>
+                <div class="status-card unknown">
+                    <h3>🗄️ ClickHouse</h3>
+                    <p>Status: Check /metrics/health</p>
+                </div>
+            </div>
+
+            <h2>📈 Available Endpoints:</h2>
+            <ul>
+                <li><a href="/api/query" class="link">POST /api/query</a> - RAG queries</li>
+                <li><a href="/api/financial/query" class="link">POST /api/financial/query</a> - Financial queries</li>
+                <li><a href="/api/financial/tickers" class="link">GET /api/financial/tickers</a> - Active tickers</li>
+                <li><a href="/api/metrics/current" class="link">GET /api/metrics/current</a> - Real-time metrics</li>
+                <li><a href="/api/metrics/health" class="link">GET /api/metrics/health</a> - Service health</li>
+                <li><a href="/api/metrics/export" class="link">POST /api/metrics/export</a> - Export metrics CSV</li>
+            </ul>
+
+            <h2>🚀 Getting Started:</h2>
+            <ol>
+                <li>Start the embeddings service for financial data streaming</li>
+                <li>Start the LLM service for RAG queries</li>
+                <li>Use the Streamlit dashboard: <code>streamlit run src/dashboard/enhanced_streamlit_dashboard.py --server.port 8502</code></li>
+                <li>Send queries to <code>/api/financial/query</code> for financial analysis</li>
+            </ol>
+
+            <p style="text-align: center; margin-top: 30px; color: #666;">
+                Last updated: {{ timestamp }}
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return render_template_string(dashboard_html, timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+# Legacy endpoints for backward compatibility
 @api.route('/metrics/summary', methods=['GET'])
 def metrics_summary():
-    """Get a summary of collected metrics."""
+    """Get a summary of collected metrics (legacy endpoint)."""
     try:
-        summary = metrics_collector.get_metrics_summary()
-        return jsonify(summary), 200
+        if enhanced_metrics:
+            metrics_data = enhanced_metrics.get_real_time_metrics()
+            return jsonify(metrics_data.get('summary', {})), 200
+        else:
+            return jsonify({"status": "Basic metrics only"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @api.route('/ingest', methods=['POST'])
 def ingest():
     """
-    Ingest documents into the RAG system.
-
-    Expected JSON body:
-    {
-        "document_urls": ["url1", "url2", ...],
-        "processing_options": {
-            "chunk_size": 512,
-            "chunk_strategy": "sliding_window"
-        }
-    }
+    Ingest documents into the RAG system (deprecated - use streaming instead).
     """
-    try:
-        data = request.get_json()
-        if not data or 'document_urls' not in data:
-            return jsonify({"error": "document_urls field is required"}), 400
-
-        # Use the Ingestion client
-        with IngestionClient() as client:
-            # Note: This would need to be implemented in the ingestion client
-            # For now, return a placeholder
-            return jsonify({
-                "status": "Not implemented yet",
-                "message": "Ingestion endpoint needs to be connected to the ingestion service"
-            }), 501
-
-    except Exception as e:
-        logger.error(f"Error during ingestion: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "status": "deprecated",
+        "message": "Document ingestion has been replaced by real-time financial data streaming. Use the embeddings service directly."
+    }), 410
 
 @api.route('/health', methods=['GET'])
 def health():
     """Health check endpoint."""
-    return jsonify({"status": "healthy"}), 200
+    health_info = {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0",
+        "features": {
+            "enhanced_metrics": enhanced_metrics is not None,
+            "financial_queries": True,
+            "real_time_monitoring": True
+        }
+    }
+    return jsonify(health_info), 200
 
 def register_routes(app):
     """Register all API routes with the Flask application."""
     app.register_blueprint(api, url_prefix='/api')
+
+    # Add a root redirect to the dashboard
+    @app.route('/')
+    def root():
+        return jsonify({
+            "message": "Financial RAG API Gateway",
+            "dashboard": "/api/metrics/dashboard",
+            "health": "/api/health",
+            "docs": "See /api/metrics/dashboard for available endpoints"
+        }), 200

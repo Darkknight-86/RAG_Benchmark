@@ -7,15 +7,15 @@ This module provides a client for communicating with the LLM service.
 from __future__ import annotations
 import logging
 import grpc
-from api_gateway.grpc import rag_service_pb2 as pb2  # type: ignore
-from api_gateway.grpc import rag_service_pb2_grpc as pb2_grpc  # type: ignore
+from api_gateway.proto import rag_service_pb2 as pb2  # type: ignore
+from api_gateway.proto import rag_service_pb2_grpc as pb2_grpc  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 class LLMClient:
     """gRPC client wrapper for the LLM micro-service."""
 
-    def __init__(self, host: str = "llm", port: int = 50054) -> None:
+    def __init__(self, host: str = "localhost", port: int = 50054) -> None:
         self.address = f"{host}:{port}"
         self.channel: grpc.Channel | None = None
         self.stub: pb2_grpc.RAGServiceStub | None = None
@@ -32,7 +32,7 @@ class LLMClient:
             logger.info("Closing gRPC channel")
             self.channel.close()
 
-    def query(self, query_text: str, model_name: str = "google/flan-t5-small", top_k: int = 5, temperature: float = 0.7, max_tokens: int = 200):
+    def query(self, query_text: str, model_name: str = "meta-llama/Llama-3.2-1B-Instruct", top_k: int = 5, temperature: float = 0.7, max_tokens: int = 1000):
         """Send a query to the LLM service."""
         if not self.stub:
             logger.error("LLMClient not initialized (use with-statement)")
