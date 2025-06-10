@@ -1,8 +1,8 @@
-# RAG Pipeline Metrics Comprehensive Guide
+# RAG Pipeline Metrics Guide
 
 ## 📊 Overview
 
-This guide explains the complete metrics system for the Financial RAG Pipeline, including real-time streaming metrics and LLM query performance tracking. The system exports metrics to component-specific CSV files every 30 seconds for detailed analysis.
+This guide explains the complete metrics system for the RAG Pipeline, including real-time streaming metrics and LLM query performance tracking. The system exports metrics to component-specific CSV files every 30 seconds for detailed analysis.
 
 ## 🏗️ Architecture
 
@@ -221,16 +221,16 @@ manual_optimize: 1% of operations
 
 ---
 
-## 📋 Interpreting Metrics
+## 📋 Understanding Metrics
 
-### **🟢 Healthy System Indicators:**
+### **🟢 Healthy System:**
 - **Streaming Latency**: <2ms consistently
 - **Chunking Latency**: <1ms
 - **Embedding Latency**: <200ms average
 - **VD Latency**: <150ms for 90% of operations
 - **Success Rates**: >98% across all components
 
-### **🟡 Performance Concerns:**
+### **🟡 Performance Issues:**
 - **Streaming Latency**: >5ms (network issues)
 - **Embedding Latency**: >500ms (model overload)
 - **VD Latency**: >300ms for normal inserts (reindexing activity)
@@ -249,7 +249,7 @@ manual_optimize: 1% of operations
 
 ---
 
-## 🚀 Optimization Recommendations
+## 🚀 Optimization Tips
 
 ### **Streaming Performance:**
 - Monitor network latency patterns
@@ -299,7 +299,7 @@ awk -F',' '{if(NR>1 && $6>500) print $1, $6"ms", $9}' vector_db_metrics.csv
 
 ---
 
-## 🔧 Troubleshooting Guide
+## 🔧 Troubleshooting
 
 ### **High Streaming Latency:**
 1. Check network connectivity to data source
@@ -341,4 +341,4 @@ API_Gateway/Data/
 
 ---
 
-*This metrics system provides complete visibility into RAG pipeline performance, enabling proactive optimization and troubleshooting.*
+*This metrics system provides complete visibility into RAG pipeline performance, enabling optimization and troubleshooting.*

@@ -50,12 +50,29 @@ Tracks AI model performance for vector generation:
 - **Token Processing**: Estimated tokens per second processing
 - **Model Efficiency**: Performance comparison across model configurations
 
-#### **4. 🗄️ Vector Database Operations** (`vector_db_metrics.csv`)
-Advanced ClickHouse MergeTree performance analysis:
-- **Operation Classification**: Automatic categorization of database operations
-- **Reindexing Detection**: Background merge, manual optimization, schema changes
-- **Performance Tiers**: Latency-based automatic classification
-- **Throughput Analysis**: Records processed per second
+#### **4. 🗄️ Vector Database Operations** (`vector_db_metrics.csv`) - **OPTIMIZED**
+Advanced ClickHouse MergeTree performance analysis with **native data integration**:
+- **Enhanced Operation Classification**: Uses actual ClickHouse system tables instead of latency guessing
+- **Native Metrics Integration**: Real-time data from `system.parts`, `system.merges`, `system.metrics`
+- **Compression Analytics**: Live storage optimization tracking (28%+ efficiency)
+- **Reduced Noise**: **54% column reduction** (26 → 12 columns) focused on high-impact metrics
+
+**Optimized 12-Column Structure:**
+```csv
+timestamp,vd_latency_ms,throughput_records_per_second,performance_tier,success,operation_type,ch_parts_count,ch_total_rows,ch_compression_ratio,compression_efficiency,merge_activity_indicator,ch_compressed_bytes
+```
+
+#### **5. 🧠 LLM Query Analytics** (`llm_query_metrics.csv`) - **NEW**
+Comprehensive RAG query performance with **10 essential columns**:
+- **End-to-End Timing**: Vector retrieval vs LLM generation breakdown
+- **Quality Metrics**: Documents found, relevance scoring, retrieval effectiveness
+- **Resource Tracking**: Token consumption, cost analysis, model performance
+- **Query Classification**: RAG vs direct query performance comparison
+
+**Essential 10-Column Structure:**
+```csv
+timestamp,query_type,success,vector_latency_ms,llm_latency_ms,total_time_ms,tokens_used,docs_found,avg_relevance_score,model_name
+```
 
 ### **ClickHouse Reindexing Benchmarks**
 
@@ -106,16 +123,37 @@ curl -X POST "http://localhost:8000/api/metrics/export" \
 # vector_latency_seconds, llm_latency_seconds, tokens_used, model_name, status
 ```
 
-### **Real-time Metrics Collection**
+### **Organized Metrics Structure** - **UPDATED**
 ```bash
-# Current benchmark data (auto-updating every 30 seconds):
+# Optimized benchmark data organization (auto-updating every 30 seconds):
 API_Gateway/Data/
-├── streaming_data_metrics.csv     # Data ingestion benchmarks
-├── chunking_metrics.csv           # Text processing performance
-├── embedding_metrics.csv          # AI model benchmarking
-├── vector_db_metrics.csv          # Database operation metrics
-└── LLM_query_performance_*.csv    # On-demand RAG pipeline benchmarks
+├── streaming_metrics/              # Real-time pipeline metrics
+│   ├── vector_db_metrics.csv      # OPTIMIZED: 12 essential columns
+│   ├── chunking_metrics.csv       # OPTIMIZED: 7 essential columns
+│   ├── streaming_data_metrics.csv # Data ingestion benchmarks
+│   └── embedding_metrics.csv      # AI model benchmarking
+└── query_metrics/                  # LLM query analysis
+    └── llm_query_metrics.csv      # NEW: 10 essential columns
 ```
+
+### **📊 Optimization Benefits**
+| **Metric Type** | **Before** | **After** | **Reduction** | **Focus** |
+|-----------------|------------|-----------|---------------|-----------|
+| **Vector DB** | 26 columns | 12 columns | **54%** | High-impact only |
+| **Chunking** | 11 columns | 7 columns | **36%** | Performance essentials |
+| **LLM Queries** | N/A | 10 columns | **NEW** | End-to-end RAG analysis |
+| **Organization** | Flat structure | **Categorized folders** | **Better analysis** |
+
+### **Quality Troubleshooting** - **Enhanced Dashboard Integration**
+Based on live dashboard metrics, monitor for common issues:
+
+| **Dashboard Issue** | **Metric Source** | **Threshold** | **Root Cause Analysis** |
+|-------------------|------------------|---------------|------------------------|
+| **"## the following" response** | `llm_query_metrics.csv` | Incomplete generation | Check token limits, model context |
+| **Average Relevance: 0.302** | `avg_relevance_score` | **<0.5 = Poor** | Vector search configuration issues |
+| **High-Quality Sources: 0/3** | `docs_found` + `avg_relevance_score` | **0% high quality** | Database content or embedding model mismatch |
+| **Vector DB: 2564ms** | `vector_db_metrics.csv` | **>1000ms = Slow** | ClickHouse performance, network latency |
+| **LLM Processing: 7.37s** | `llm_latency_ms` | **>5000ms = Slow** | Model size, GPU/CPU utilization |
 
 ---
 

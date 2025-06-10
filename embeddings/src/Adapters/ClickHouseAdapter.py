@@ -26,8 +26,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Configure logging to capture all levels
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging for production use
+logging.basicConfig(level=logging.INFO)
 
 
 class ClickHouseAdapter(VectorStoreAdapter):
@@ -79,8 +79,7 @@ class ClickHouseAdapter(VectorStoreAdapter):
             password = os.getenv('CLICKHOUSE_PASSWORD', '')
             secure = os.getenv('CLICKHOUSE_SECURE', 'true').lower() == 'true'
 
-            print(f"Connecting to ClickHouse at {host}:{port} with user {username} (secure={secure})",
-                  file=sys.stderr, flush=True)
+            logger.info(f"Connecting to ClickHouse at {host}:{port} with user {username} (secure={secure})")
 
             return clickhouse_connect.get_client(
                 host=host,
@@ -94,7 +93,7 @@ class ClickHouseAdapter(VectorStoreAdapter):
                 compression=True
             )
         except Exception as e:
-            print(f"Failed to connect to ClickHouse: {str(e)}", file=sys.stderr, flush=True)
+            logger.error(f"Failed to connect to ClickHouse: {str(e)}")
             raise
 
     def add_embedding(self, vector: List[float], text: str, metadata: Dict[str, Any]):
@@ -141,10 +140,9 @@ class ClickHouseAdapter(VectorStoreAdapter):
                 ],
             )
             return True
-        except Exception as e:  # Fixed indentation here
-            print(f"Error inserting into ClickHouse: {str(e)}")
-            print(f"Row that failed: {row}")
-            traceback.print_exc()
+        except Exception as e:
+            logger.error(f"Error inserting into ClickHouse: {str(e)}")
+            logger.debug(f"Row that failed: {row}")
             return False
 
     def add_documents(self, documents: List[Document], ids: Optional[List[str]] = None, embeddings: Optional[List[List[float]]] = None) -> List[str]:
@@ -202,13 +200,14 @@ class ClickHouseAdapter(VectorStoreAdapter):
                     ],
                 )
                 successful_ids.append(doc_id)
-                print(f"✅ Successfully inserted document {i+1}/{len(documents)} with ID: {doc_id}")
+                logger.debug(f"Inserted document {i+1}/{len(documents)}")
             except Exception as e:
-                print(f"❌ Failed to insert document {i+1}/{len(documents)} with ID: {doc_id}")
-                print(f"Error: {str(e)}")
-                traceback.print_exc()
+                logger.warning(f"Failed to insert document {i+1}: {str(e)}")
 
-        print(f"Successfully inserted {len(successful_ids)}/{len(documents)} documents")
+        if len(successful_ids) == len(documents):
+            logger.info(f"Successfully inserted {len(successful_ids)} documents")
+        else:
+            logger.warning(f"Inserted {len(successful_ids)}/{len(documents)} documents (some failed)")
         return successful_ids
 
     def similarity_search(self, query: str, k: int = 4, **kwargs) -> List[Document]:
@@ -263,8 +262,7 @@ class ClickHouseAdapter(VectorStoreAdapter):
 
             return documents_with_scores
         except Exception as e:
-            print(f"Error performing similarity search: {str(e)}")
-            traceback.print_exc()
+            logger.error(f"Error performing similarity search: {str(e)}")
             return []
 
     def delete(self, ids: Optional[List[str]] = None) -> bool:

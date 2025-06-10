@@ -4,6 +4,12 @@ Main module for the LLM service.
 This module provides the gRPC server implementation for the LLM service with RAG pipeline.
 """
 
+# Import global warning suppression for production
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+import warnings_suppression
+
 import grpc
 import asyncio
 import logging

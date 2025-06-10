@@ -11,6 +11,11 @@ import os
 # Fix yliveticker protobuf compatibility issue
 os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 
+# Import global warning suppression for production
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+import warnings_suppression
+
 import yliveticker
 import json
 import logging
@@ -25,6 +30,7 @@ from database import MultiDatabase
 from streaming_metrics import streaming_metrics
 import threading
 from datetime import datetime
+from clickhouse_native_metrics import initialize_native_metrics, get_native_metrics_for_operation
 
 # Set up logging
 logging.basicConfig(
@@ -43,11 +49,11 @@ def periodic_csv_export():
             exported_files = streaming_metrics.export_component_csvs(minutes=5)
 
             if exported_files:
-                logger.info(f"🗄️ Auto-exported component metrics:")
+                logger.info("Auto-exported component metrics")
                 for component, filename in exported_files.items():
-                    logger.info(f"  📊 {component}: {filename}")
+                    logger.debug(f"  {component}: {filename}")
             else:
-                logger.info("🗄️ No new metrics to export")
+                logger.debug("No new metrics to export")
 
         except Exception as e:
             logger.error(f"Failed to auto-export streaming metrics: {e}")
@@ -77,6 +83,13 @@ class FinancialDataStreamer:
 
         # Initialize multi-database support
         self.database = MultiDatabase(streaming_config["adapters"])
+
+        # Initialize native ClickHouse metrics if using ClickHouse
+        if "clickhouse" in streaming_config["adapters"]:
+            clickhouse_client = self.database.get_clickhouse_client()
+            if clickhouse_client:
+                initialize_native_metrics(clickhouse_client)
+                logger.info("✅ Enhanced ClickHouse native metrics initialized")
 
         # Ticker list
         self.ticker_names = [
@@ -183,7 +196,7 @@ def on_ticker(ws, msg):
             text = str(msg)
             ticker_id = 'unknown'
 
-        logger.debug(f"Processing raw text for ticker {ticker_id}")
+        # Processing ticker data - debug level only
 
         # METRICS: Record data ingestion timing
         ingestion_latency = (time.time() - ingestion_start) * 1000  # Convert to ms
@@ -216,8 +229,7 @@ def on_ticker(ws, msg):
             }
         )
 
-        logger.debug(f"Processing {len(chunks)} chunks for ticker {ticker_id} (chunking: {chunking_latency:.2f}ms)")
-
+        # Processing chunks and embeddings - debug level only
         if not chunks:
             return
 
@@ -225,8 +237,6 @@ def on_ticker(ws, msg):
         embedding_start = time.time()
         embeddings = streamer.embedder.embed_documents(chunks)
         embedding_latency = (time.time() - embedding_start) * 1000  # Convert to ms
-
-        logger.debug(f"Generated {len(embeddings)} embeddings for ticker {ticker_id}")
 
         # Record embedding metrics
         streaming_metrics.record_embedding_generation(
@@ -242,6 +252,7 @@ def on_ticker(ws, msg):
             try:
                 # METRICS: Track Vector Database load time
                 vd_start = time.time()
+                operation_timestamp = datetime.now()
 
                 # Store in ALL configured databases
                 success = streamer.database.insert_vector(
@@ -258,21 +269,28 @@ def on_ticker(ws, msg):
 
                 # METRICS: Record Vector Database load time
                 vd_latency = (time.time() - vd_start) * 1000  # Convert to ms
-                streaming_metrics.record_database_operation(
+
+                # ENHANCED: Get native ClickHouse metrics for this operation
+                native_metrics = {}
+                if success and "clickhouse" in str(type(streamer.database.primary_adapter)).lower():
+                    native_metrics = get_native_metrics_for_operation(operation_timestamp)
+
+                # ENHANCED: Record with native ClickHouse data
+                streaming_metrics.record_enhanced_database_operation(
                     operation="vector_insert",
                     table="financial_vectors",
                     success=success,
                     latency_ms=vd_latency,
-                    records_affected=1
+                    records_affected=1,
+                    operation_timestamp=operation_timestamp,
+                    native_metrics=native_metrics
                 )
 
-                if success:
-                    logger.debug(f"✅ Successfully processed chunk {i} for ticker {ticker_id} (VD load: {vd_latency:.2f}ms)")
-                else:
-                    logger.warning(f"⚠️ Failed to process chunk {i} for ticker {ticker_id}")
+                if not success:
+                    logger.warning(f"Failed to process chunk {i} for ticker {ticker_id}")
 
             except Exception as e:
-                logger.error(f"❌ Error processing chunk {i} for ticker {ticker_id}: {str(e)}")
+                logger.error(f"Error processing chunk {i} for ticker {ticker_id}: {str(e)}")
                 # Record the error
                 streaming_metrics.record_error(
                     error_type="database_insert_error",
@@ -282,7 +300,7 @@ def on_ticker(ws, msg):
                 )
 
     except Exception as e:
-        logger.error(f"❌ Error processing message for ticker: {str(e)}")
+        logger.error(f"Error processing message for ticker: {str(e)}")
         # Record ingestion error
         streaming_metrics.record_data_ingestion(
             ticker=ticker_id if 'ticker_id' in locals() else 'unknown',
@@ -313,7 +331,7 @@ def start_streaming():
     # Start automatic CSV export thread
     csv_thread = threading.Thread(target=periodic_csv_export, daemon=True)
     csv_thread.start()
-    logger.info("🗄️ Started automatic component CSV export (every 30 seconds → 4 pipeline CSV files)")
+    logger.info("Started automatic component CSV export (every 30 seconds)")
 
     ticker = yliveticker.YLiveTicker(
         on_ticker=on_ticker,
@@ -322,8 +340,8 @@ def start_streaming():
         ticker_names=streamer.ticker_names
     )
 
-    logger.info("📡 Live streaming started. Press Ctrl+C to stop.")
-    logger.info(f"📈 Monitoring {len(streamer.ticker_names)} financial instruments")
+    logger.info("Financial data streaming service started")
+    logger.info(f"Monitoring {len(streamer.ticker_names)} financial instruments → ClickHouse vector database")
 
     try:
         while True:

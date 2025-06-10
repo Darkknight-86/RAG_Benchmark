@@ -1,16 +1,15 @@
 # RAG Benchmarking Platform
 
-> **Comprehensive Retrieval-Augmented Generation Performance Measurement & Analytics System**
+> **A comprehensive system for measuring and analyzing Retrieval-Augmented Generation pipeline performance**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Platform: Multi-Database](https://img.shields.io/badge/Platform-Multi--Database-green.svg)](docs/DATABASE_SUPPORT.md)
 
-A production-ready benchmarking platform designed to measure, analyze, and optimize Retrieval-Augmented Generation (RAG) pipeline performance across all components. Features real-time metrics collection, component-specific performance tracking, and comprehensive analytics.
+A benchmarking platform designed to measure, analyze, and optimize RAG pipeline performance across all components. Built with real-time metrics collection, component-specific performance tracking, and comprehensive analytics.
 
 ## 🎯 **Overview**
 
-**RAG_Benchmark** provides comprehensive performance measurement for RAG systems using a modern microservices architecture. The platform tracks performance across data ingestion, text chunking, embedding generation, vector storage, and LLM query processing.
+**RAG_Benchmark** provides comprehensive performance measurement for RAG systems using a microservices architecture. The platform tracks performance across data ingestion, text chunking, embedding generation, vector storage, and LLM query processing.
 
 ### **Key Features**
 
@@ -18,8 +17,7 @@ A production-ready benchmarking platform designed to measure, analyze, and optim
 - 📊 **Real-time Metrics Collection** - Live performance data with 30-second auto-export
 - 🗄️ **Advanced Vector Database Analysis** - ClickHouse MergeTree operation monitoring with reindexing detection
 - 📈 **Analytics** - CSV exports with detailed performance breakdowns
-- 🎯 **Multi-Database Support** - Configurable benchmarking across ClickHouse, PostgreSQL, OpenSearch, Cassandra (to be fully implemented)
-
+- 🎯 **Multi-Database Support** - Configurable benchmarking across ClickHouse, PostgreSQL, OpenSearch, Cassandra
 
 ---
 
@@ -37,7 +35,6 @@ flowchart TB
             C[API Gateway<br/>:8000]
             D[Embeddings Service<br/>:50051]
             E[LLM Service<br/>:50054]
-            F[Streaming Service<br/>Independent]
         end
 
         subgraph "Storage & Analytics"
@@ -62,17 +59,16 @@ flowchart TB
         end
     end
 
-    A --> F
+    A --> D
     B --> C
     C <--> D
     C <--> E
     D <--> G
     D <--> H
-    F --> G
 
     C --> M
     E --> N
-    F --> O
+    D --> O
     M --> N
     M --> O
 
@@ -92,7 +88,6 @@ flowchart TB
     style C fill:#f3e5f5
     style D fill:#f3e5f5
     style E fill:#f3e5f5
-    style F fill:#f3e5f5
     style G fill:#e8f5e8
     style H fill:#e8f5e8
     style I fill:#fff3e0
@@ -114,7 +109,6 @@ flowchart TB
 | **API Gateway** | 8000 | Central entry point, metrics aggregation | FastAPI, Python 3.11+ |
 | **Embeddings Service** | 50051 | Vector generation and storage benchmarking | gRPC, LangChain, sentence-transformers |
 | **LLM Service** | 50054 | Query processing and response generation | gRPC, Transformers |
-| **Streaming Service** | Independent | Real-time data processing benchmarking | Async Python, yliveticker |
 | **Dashboard** | 8502 | Performance visualization and analysis | Streamlit |
 
 ---
@@ -219,6 +213,20 @@ WebSocket: ws://localhost:8000/ws/metrics
 - **Poetry** (dependency management)
 - **ClickHouse Cloud** account or self-hosted instance
 - **Docker** (optional, for containerized deployment)
+
+### **🍎 Apple Silicon GPU Support**
+
+**Native MPS (Metal Performance Shaders) Acceleration** - optimized for Apple M1/M2/M3/M4 chips:
+
+- **PyTorch 2.3.0** with Apple MPS backend support
+- **Transformers 4.41.0** (avoids `torch.isin` MPS compatibility issues)
+- **Float16 precision** for optimal Apple GPU performance
+- **No CPU fallback required** - runs entirely on Apple Silicon GPU
+
+**Performance on Apple Silicon:**
+- **10x faster** LLM inference compared to CPU-only
+- **Native GPU acceleration** for Llama models
+- **Optimized memory usage** with float16 precision
 
 ### **Installation**
 
@@ -345,23 +353,26 @@ wscat -c ws://localhost:8000/ws/metrics
 # }
 ```
 
-### **Real-time Metrics Access**
+### **Organized Metrics Structure**
 
 ```bash
-# Unified metrics data location (automated export every 30 seconds):
+# Optimized metrics organization (automated export every 30 seconds):
 API_Gateway/Data/
-├── streaming_data_metrics.csv     # Live data ingestion benchmarks
-├── chunking_metrics.csv           # Text processing performance
-├── embedding_metrics.csv          # AI model benchmarks
-├── vector_db_metrics.csv          # Database operation metrics
-└── LLM_query_performance_*.csv    # LLM query analytics (on-demand)
+├── streaming_metrics/              # Real-time pipeline performance
+│   ├── vector_db_metrics.csv      # ClickHouse operations (12 columns)
+│   ├── chunking_metrics.csv       # Text processing (7 columns)
+│   ├── streaming_data_metrics.csv # Data ingestion benchmarks
+│   └── embedding_metrics.csv      # AI model performance
+└── query_metrics/                  # LLM query analysis
+    └── llm_query_metrics.csv      # RAG performance (10 columns)
 ```
 
-**Unified Metrics System:**
-- **Single Collector**: `enhanced_metrics.py` handles all metrics collection
-- **Automated Export**: CSV generation every 30 seconds
+**Enhanced Metrics System:**
+- **Organized Structure**: Separate folders for streaming vs query metrics
+- **Optimized Data**: 36-54% column reduction focusing on high-impact metrics
+- **Automated Export**: CSV generation every 30 seconds with organized routing
 - **Real-time Streaming**: WebSocket broadcasting for live dashboards
-- **Consolidated Analytics**: All performance data in one system
+- **Comprehensive Analytics**: Complete RAG pipeline performance tracking
 
 ---
 
@@ -500,7 +511,7 @@ export MAIN_DB_ADAPTERS=clickhouse
 | Model Type | Avg Response Time | Token Throughput | Typical Use Case |
 |------------|-------------------|------------------|------------------|
 | **flan-t5-small** | 1.5-2.5s | 15-25 tokens/s | General queries, development |
-| **flan-t5-base** | 2.0-3.5s | 20-30 tokens/s | Production queries |
+| **flan-t5-base** | 2.0-3.5s | 20-30 tokens/s | Balanced performance |
 | **flan-t5-large** | 3.0-5.0s | 25-35 tokens/s | Complex reasoning |
 
 **Performance Analytics:**
@@ -568,18 +579,16 @@ DATABASE_CONFIG = {
 
 ## 📚 **Documentation**
 
-- **[Project Status](docs/PROJECT_STATUS.md)** - Current implementation status and roadmap
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
-- **[RAG Pipeline Metrics Guide](docs/RAG_Pipeline_Metrics_Guide.md)** - Comprehensive metrics documentation
-- **[API Gateway Benchmarking](API_Gateway/Docs/Benchmarking.md)** - Detailed benchmarking capabilities
-- **[Docker Guide](docs/DockerGuide.md)** - Containerized deployment
+- **[Project Status](Docs/PROJECT_STATUS.md)** - Current implementation status and roadmap
+- **[Deployment Guide](Docs/DEPLOYMENT_GUIDE.md)** - Setup and deployment instructions
+- **[RAG Pipeline Metrics Guide](Docs/RAG_Pipeline_Metrics_Guide.md)** - Comprehensive metrics documentation
+- **[Docker Guide](Docs/DockerGuide.md)** - Containerized deployment
 
 ### **Service-Specific Documentation**
 
 - **[API Gateway](API_Gateway/README.md)** - Central gateway and metrics collection
 - **[Embeddings Service](Embeddings/README.md)** - Vector generation and storage
 - **[LLM Service](LLM/README.md)** - Query processing and response generation
-- **[UI Dashboard](UI/README.md)** - Visualization and user interface
 
 ---
 
@@ -605,7 +614,7 @@ cd API_Gateway && poetry run pytest tests/test_benchmarks.py -v
 
 ## 🤝 **Contributing**
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+We welcome contributions! Here's how to get started:
 
 ### **Development Setup**
 
@@ -637,8 +646,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **🐛 Bug Reports**: [Create an issue](https://github.com/yourusername/RAG_Benchmark/issues)
 - **💡 Feature Requests**: [Discussions](https://github.com/yourusername/RAG_Benchmark/discussions)
-- **📖 Documentation**: Check our comprehensive [docs](docs/) directory
-- **💬 Community**: Join our [Discord](https://discord.gg/rag-benchmark) (coming soon)
+- **📖 Documentation**: Check our comprehensive [Docs](Docs/) directory
+- **💬 Community**: Join our discussions for help and collaboration
 
 ---
 

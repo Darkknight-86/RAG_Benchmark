@@ -43,10 +43,6 @@ lock:
 	cd LLM && poetry lock
 	@echo "  → Locking API Gateway dependencies..."
 	cd API_Gateway && poetry lock
-	@echo "  → Locking Ingestion service dependencies..."
-	cd Ingestion && poetry lock
-	@echo "  → Locking UI service dependencies..."
-	cd UI && poetry lock
 	@echo "✅ All lock files generated!"
 
 # Install dependencies for all services
@@ -58,10 +54,6 @@ install:
 	cd LLM && poetry install --only main
 	@echo "  → Installing API Gateway dependencies..."
 	cd API_Gateway && poetry install --only main
-	@echo "  → Installing Ingestion service dependencies..."
-	cd Ingestion && poetry install --only main
-	@echo "  → Installing UI service dependencies..."
-	cd UI && poetry install --only main
 	@echo "✅ All dependencies installed!"
 
 # Start all services (REDESIGNED SYSTEM)
@@ -142,10 +134,6 @@ test:
 	cd LLM && PYTHONPATH=src poetry run pytest || true
 	@echo "  → Testing API Gateway..."
 	cd API_Gateway && PYTHONPATH=src poetry run pytest || true
-	@echo "  → Testing Ingestion..."
-	cd Ingestion && PYTHONPATH=src poetry run pytest || true
-	@echo "  → Testing UI..."
-	cd UI && PYTHONPATH=src poetry run pytest || true
 	@echo "✅ Tests completed!"
 
 # Clean up processes and temporary files

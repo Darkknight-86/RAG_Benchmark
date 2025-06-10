@@ -4,10 +4,6 @@ Focus on LLM query testing with simplified metrics (streaming data exports to CS
 """
 
 import streamlit as st
-import plotly.graph_objs as go
-import plotly.express as px
-from plotly.subplots import make_subplots
-import pandas as pd
 import json
 import time
 from datetime import datetime, timedelta
@@ -71,19 +67,115 @@ st.markdown("""
         margin-top: 1rem !important;
     }
 
-    /* Beautiful section headers with excellent readability */
+    /* Beautiful section headers with excellent readability and color bubbles */
     .section-header {
         background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
         color: #ffffff;
         border: none;
-        padding: 1.5rem;
-        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        border-radius: 15px;
         margin: 2rem 0;
         font-size: 1.4rem;
         font-weight: bold;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 20px rgba(30, 58, 138, 0.4);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        position: relative;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .section-header::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 12px;
+        height: 12px;
+        background: #4ade80;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(74, 222, 128, 0.6);
+    }
+
+    /* Connection status headers with color bubbles */
+    .status-header {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        color: #ffffff;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        font-size: 1.1rem;
+        font-weight: bold;
+        box-shadow: 0 3px 15px rgba(5, 150, 105, 0.3);
+        position: relative;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .status-header::before {
+        content: '';
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        background: #fbbf24;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(251, 191, 36, 0.8);
+    }
+
+    /* System info headers with color bubbles */
+    .info-header {
+        background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+        color: #ffffff;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        font-size: 1.1rem;
+        font-weight: bold;
+        box-shadow: 0 3px 15px rgba(124, 58, 237, 0.3);
+        position: relative;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .info-header::before {
+        content: '';
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        background: #06b6d4;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+    }
+
+    /* Query section headers with color bubbles */
+    .query-header {
+        background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+        color: #ffffff;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        font-size: 1.2rem;
+        font-weight: bold;
+        box-shadow: 0 3px 15px rgba(220, 38, 38, 0.3);
+        position: relative;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .query-header::before {
+        content: '';
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        background: #f59e0b;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
     }
 
     /* Query section with better contrast */
@@ -188,23 +280,25 @@ st.markdown("""
         border-left: 4px solid #f44336 !important;
     }
 
-    /* Better text readability - all headers and text should be dark */
+    /* ENHANCED TEXT READABILITY - ALL TEXT VERY DARK */
     .stMarkdown {
-        color: #1a1a1a;
+        color: #1a1a1a !important;
     }
 
-    /* Make all headers dark and bold */
+    /* All headers - very dark with excellent readability */
     .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
         color: #1a1a1a !important;
         font-weight: bold !important;
+        text-shadow: none !important;
     }
 
-    /* Section titles should be dark */
+    /* All paragraph text - dark gray for excellent readability */
     .stMarkdown p {
         color: #2d3748 !important;
+        font-weight: 500 !important;
     }
 
-    /* Ensure all section headers are dark and visible */
+    /* Section headers - extra dark */
     .stMarkdown h3 {
         color: #1a1a1a !important;
         font-weight: bold !important;
@@ -216,67 +310,101 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* Widget labels should be WHITE for better contrast */
-    label[data-testid="stWidgetLabel"] {
-        color: #ffffff !important;
-        font-weight: 600 !important;
+    /* Tips and information text - dark */
+    .stMarkdown em {
+        color: #374151 !important;
     }
 
-    /* Text area labels */
-    .stTextArea label {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-
-    /* Selectbox labels */
-    .stSelectbox label {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-
-    /* Slider labels */
-    .stSlider label {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-
-    /* All widget labels */
-    .stApp label {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-
-    /* Caption text should also be white */
-    .stMarkdown .caption {
-        color: #ffffff !important;
-    }
-
-    /* Section headers should remain dark only in content areas */
-    div[data-testid="stMarkdownContainer"] h3 {
+    /* Code text - very dark */
+    .stMarkdown code {
         color: #1a1a1a !important;
+        background-color: #f3f4f6 !important;
     }
 
-    /* Subheader elements should be white */
-    .element-container .stMarkdown h4 {
-        color: #ffffff !important;
+    /* ALL TEXT AND HEADINGS - VERY DARK FOR MAXIMUM READABILITY */
+
+    /* Widget labels - dark for readability */
+    label[data-testid="stWidgetLabel"] {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+    }
+
+    /* Text area labels - dark */
+    .stTextArea label {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+    }
+
+    /* Selectbox labels - dark */
+    .stSelectbox label {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+    }
+
+    /* Slider labels - dark */
+    .stSlider label {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+    }
+
+    /* All widget labels - dark */
+    .stApp label {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+    }
+
+    /* Caption text - dark */
+    .stMarkdown .caption {
+        color: #2d3748 !important;
+    }
+
+    /* All section headers - very dark */
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3,
+    div[data-testid="stMarkdownContainer"] h4,
+    div[data-testid="stMarkdownContainer"] h5,
+    div[data-testid="stMarkdownContainer"] h6 {
+        color: #1a1a1a !important;
         font-weight: bold !important;
     }
 
-    /* Make subheaders in the main content area white */
-    .main .stMarkdown h4 {
-        color: #ffffff !important;
+    /* All subheader elements - very dark */
+    .element-container .stMarkdown h1,
+    .element-container .stMarkdown h2,
+    .element-container .stMarkdown h3,
+    .element-container .stMarkdown h4,
+    .element-container .stMarkdown h5,
+    .element-container .stMarkdown h6 {
+        color: #1a1a1a !important;
         font-weight: bold !important;
     }
 
-    /* Tips header should be white */
-    .main .stMarkdown h3:contains("Tips") {
-        color: #ffffff !important;
+    /* Main content headers - very dark */
+    .main .stMarkdown h1,
+    .main .stMarkdown h2,
+    .main .stMarkdown h3,
+    .main .stMarkdown h4,
+    .main .stMarkdown h5,
+    .main .stMarkdown h6 {
+        color: #1a1a1a !important;
         font-weight: bold !important;
     }
 
-    /* All h3 headers in main content should be white */
-    .main .stMarkdown h3 {
-        color: #ffffff !important;
+    /* All paragraph text - dark */
+    .stMarkdown p {
+        color: #2d3748 !important;
+        font-weight: 500 !important;
+    }
+
+    /* List items - dark */
+    .stMarkdown li {
+        color: #2d3748 !important;
+    }
+
+    /* Strong/bold text - very dark */
+    .stMarkdown strong {
+        color: #1a1a1a !important;
         font-weight: bold !important;
     }
 
@@ -361,16 +489,8 @@ if 'last_update' not in st.session_state:
     st.session_state.last_update = None
 if 'query_history' not in st.session_state:
     st.session_state.query_history = []
-
-if 'current_view' not in st.session_state:
-    st.session_state.current_view = 'main'
-
 if 'selected_query' not in st.session_state:
     st.session_state.selected_query = ''
-
-if 'batch_queries' not in st.session_state:
-    st.session_state.batch_queries = ''
-
 if 'last_query_result' not in st.session_state:
     st.session_state.last_query_result = None
 
@@ -678,12 +798,12 @@ def render_export_section():
                     st.json(result)
 
 def render_sidebar():
-    """Render focused sidebar for query analysis"""
+    """Render simplified sidebar with connection status and system info"""
     with st.sidebar:
         st.markdown("## 🎯 Query Analysis Tools")
 
-        # Connection status only
-        st.markdown("### 🔗 Connection Status")
+        # Connection status with colored header
+        st.markdown('<div class="status-header">🔗 Connection Status</div>', unsafe_allow_html=True)
         try:
             response = requests.get(f"http://{API_GATEWAY_HOST}:{API_GATEWAY_PORT}/api/health", timeout=5)
             if response.status_code == 200:
@@ -700,193 +820,11 @@ def render_sidebar():
         except:
             st.error("❌ Cannot reach API Gateway")
 
-        # View selection using session state
-        st.markdown("### 🔍 Analysis Views")
-
-        view_options = {
-            'main': '🏠 Main Dashboard',
-            'llm_analysis': '🧠 LLM Performance',
-            'batch_testing': '⚡ Batch Testing'
-        }
-
-        for view_key, view_label in view_options.items():
-            if st.button(view_label, key=f"view_{view_key}"):
-                st.session_state.current_view = view_key
-
-        # System info
-        st.markdown("### ℹ️ System Information")
+        # System info with colored header
+        st.markdown('<div class="info-header">ℹ️ System Information</div>', unsafe_allow_html=True)
         st.info(f"**Dashboard Version:** 3.1.0 Fixed\n**Mode:** Manual Analysis\n**Query History:** {len(st.session_state.query_history)} queries")
 
-def render_analysis_views():
-    """Render different analysis views based on current selection"""
-
-    if st.session_state.current_view == 'llm_analysis':
-        render_llm_analysis_view()
-    elif st.session_state.current_view == 'batch_testing':
-        render_batch_testing_view()
-
-# Query patterns functionality deprecated as requested
-
-def render_llm_analysis_view():
-    """Deep dive LLM performance analysis"""
-    st.markdown("### 🧠 LLM Performance Deep Dive")
-
-    if not st.session_state.query_history:
-        st.warning("No query history available. Run some queries first!")
-        return
-
-    # Performance metrics analysis
-    metrics_data = []
-    for q in st.session_state.query_history:
-        if 'result' in q and 'metrics' in q['result']:
-            m = q['result']['metrics']
-            metrics_data.append({
-                'Query': q['query'][:50] + '...',
-                'Vector Latency (ms)': m.get('vector_latency', 0) * 1000,
-                'LLM Latency (ms)': m.get('llm_latency', 0) * 1000,
-                'Total Time (s)': m.get('total_time', 0),
-                'Tokens': m.get('tokens_used', 0),
-                'Model': m.get('model_name', 'Unknown')
-            })
-
-    if metrics_data:
-        df = pd.DataFrame(metrics_data)
-        st.dataframe(df, use_container_width=True)
-
-        # Performance visualization
-        if len(df) > 1:
-            fig = px.scatter(df, x='Vector Latency (ms)', y='LLM Latency (ms)',
-                           size='Tokens', hover_data=['Query', 'Model'],
-                           title="Vector vs LLM Latency Analysis")
-            st.plotly_chart(fig, use_container_width=True)
-
-def render_batch_testing_view():
-    """Batch query testing interface"""
-    st.markdown("### ⚡ Batch Query Testing")
-
-    st.markdown("""
-    <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-        <strong>🚨 Pressure Testing Mode:</strong> Send multiple queries to stress-test the LLM and get comprehensive metrics.
-        <br><strong>📋 How to use:</strong> Click auto-populate buttons to load example queries, then edit as needed, or type your own queries.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Crypto query examples
-    crypto_queries = [
-        "What is the current price, volume, and trend of Bitcoin (BTC-USD)?",
-        "How is Ethereum performing compared to Bitcoin today?",
-        "Compare Bitcoin vs Ethereum: prices, trends, and volume data",
-        "What are the current prices and trends of all DeFi tokens?",
-        "Which cryptocurrencies show the highest volume and price changes?"
-    ]
-
-    # Auto-populate buttons
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button("📝 Load Crypto Queries", type="secondary"):
-            st.session_state['batch_queries'] = '\n'.join(crypto_queries)
-
-    with col2:
-        if st.button("📝 Load Financial Queries", type="secondary"):
-            financial_queries = [
-                "How are tech stocks performing?",
-                "What's driving market volatility?",
-                "Compare Australian vs US market performance"
-            ]
-            st.session_state['batch_queries'] = '\n'.join(financial_queries)
-
-    with col3:
-        if st.button("🗑️ Clear Queries"):
-            st.session_state['batch_queries'] = ''
-
-    # Batch query editor
-    st.subheader("🎯 Batch Query Editor")
-    batch_queries_text = st.text_area(
-        "Batch Queries (one per line):",
-        value=st.session_state.get('batch_queries', ''),
-        placeholder="Enter your test queries here...\nWhat is the market doing?\nHow are tech stocks performing?",
-        height=200
-    )
-
-    # Update session state
-    st.session_state['batch_queries'] = batch_queries_text
-
-    # Execution
-    query_count = len([q.strip() for q in batch_queries_text.split('\n') if q.strip()])
-    if st.button(f"🚀 Run Batch Testing ({query_count} queries)", type="primary", disabled=query_count == 0):
-        queries = [q.strip() for q in batch_queries_text.split('\n') if q.strip()]
-        run_batch_queries(queries)
-
-def run_batch_queries(queries: List[str]):
-    """Execute a batch of queries for pressure testing"""
-    st.markdown(f"### 🔄 Running Batch ({len(queries)} queries)")
-
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-
-    batch_results = []
-
-    for i, query in enumerate(queries):
-        status_text.text(f"Processing query {i+1}/{len(queries)}: {query[:50]}...")
-        progress_bar.progress((i + 1) / len(queries))
-
-        # Execute query
-        result = ModernDashboard.test_llm_query(query)
-
-        if "error" not in result:
-            batch_results.append({
-                "query": query,
-                "response": result.get("response", "No response"),
-                "metrics": result.get("metrics", {}),
-                "success": True
-            })
-
-            # Add to session history
-            st.session_state.query_history.insert(0, {
-                "timestamp": datetime.now(),
-                "query": query,
-                "ticker": None,
-                "model": result.get("metrics", {}).get("model_name", "Unknown"),
-                "result": result
-            })
-        else:
-            batch_results.append({
-                "query": query,
-                "error": result["error"],
-                "success": False
-            })
-
-    # Display results
-    st.markdown("### 📊 Batch Results Summary")
-
-    successful = len([r for r in batch_results if r["success"]])
-    total_time = sum([r["metrics"].get("total_time", 0) for r in batch_results if r["success"]])
-    avg_time = total_time / successful if successful > 0 else 0
-
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Successful Queries", f"{successful}/{len(queries)}")
-    with col2:
-        st.metric("Success Rate", f"{(successful/len(queries)*100):.1f}%")
-    with col3:
-        st.metric("Total Time", f"{total_time:.2f}s")
-    with col4:
-        st.metric("Avg Time/Query", f"{avg_time:.2f}s")
-
-    # Detailed results
-    for i, result in enumerate(batch_results):
-        with st.expander(f"Query {i+1}: {result['query'][:50]}..." + (" ✅" if result["success"] else " ❌")):
-            if result["success"]:
-                st.write(f"**Response:** {result['response']}")
-                if result["metrics"]:
-                    st.write(f"**Metrics:** {result['metrics']}")
-            else:
-                st.error(f"**Error:** {result['error']}")
-
-    status_text.text(f"✅ Batch complete! {successful}/{len(queries)} queries successful")
-
-# Quick examples section removed as requested
+# Analysis views and batch testing functionality removed as requested
 
 def main():
     """Main dashboard application - focused on LLM query testing"""
@@ -900,38 +838,28 @@ def main():
         st.session_state.metrics_data = {}
         st.session_state.last_update = datetime.now()
 
-    # Display content based on current view
-    if st.session_state.current_view == 'main':
-        # Main dashboard content
-        render_llm_query_interface()
-        render_query_history()
+    # Main dashboard content only (analysis views removed)
+    render_llm_query_interface()
+    render_query_history()
 
-        st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-        render_export_section()
+    render_export_section()
 
-        # Streaming data note
-        st.markdown("""
-        <div style="background: #e8f4fd; padding: 1.5rem; border-radius: 10px; border-left: 4px solid #2196F3; margin-top: 2rem;">
-            <h3>📊 Automated Pipeline Metrics</h3>
-            <p>✅ <strong>Component CSV Exports:</strong> RAG pipeline metrics are automatically exported every 30 seconds:</p>
-            <ul>
-                <li>📡 <code>streaming_data_metrics.csv</code> - Data ingestion, throughput, latency</li>
-                <li>✂️ <code>chunking_metrics.csv</code> - Text chunking performance, chunk sizes</li>
-                <li>🧠 <code>embedding_metrics.csv</code> - Embedding generation, model performance</li>
-                <li>🗄️ <code>vector_db_metrics.csv</code> - VD indexing/reindexing, database performance</li>
-            </ul>
-            <p>🎯 <strong>This dashboard:</strong> Manual query testing • Deep-dive analysis • Batch pressure testing</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        # Analysis views
-        render_analysis_views()
-
-        # Back to main button
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🏠 Back to Main Dashboard", type="secondary"):
-            st.session_state.current_view = 'main'
+    # Streaming data note
+    st.markdown("""
+    <div style="background: #e8f4fd; padding: 1.5rem; border-radius: 10px; border-left: 4px solid #2196F3; margin-top: 2rem;">
+        <h3>📊 Automated Pipeline Metrics</h3>
+        <p>✅ <strong>Component CSV Exports:</strong> RAG pipeline metrics are automatically exported every 30 seconds:</p>
+        <ul>
+            <li>📡 <code>streaming_data_metrics.csv</code> - Data ingestion, throughput, latency</li>
+            <li>✂️ <code>chunking_metrics.csv</code> - Text chunking performance, chunk sizes</li>
+            <li>🧠 <code>embedding_metrics.csv</code> - Embedding generation, model performance</li>
+            <li>🗄️ <code>vector_db_metrics.csv</code> - VD indexing/reindexing, database performance</li>
+        </ul>
+        <p>🎯 <strong>This dashboard:</strong> Manual query testing • Deep-dive analysis</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

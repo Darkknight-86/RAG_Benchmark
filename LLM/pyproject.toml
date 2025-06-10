@@ -16,12 +16,13 @@ python-dotenv = "1.0.0"
 grpcio = "1.60.0"
 protobuf = "4.21.12"
 
-# AI/ML Dependencies - Core LLM functionality
-transformers = "4.44.0"
-torch = "2.3.0"
+# AI/ML Dependencies - MPS-compatible versions
+transformers = "4.41.0"    # Avoids torch.isin MPS bug in 4.42+
+torch = "2.3.0"             # PyTorch 2.3.0 with Apple MPS support
 sentence-transformers = "2.2.2"
-accelerate = "0.25.0"
+accelerate = "1.6.0"        # Latest Accelerate for proper MPS device mapping
 huggingface-hub = "0.24.0"
+safetensors = "0.4.3"       # Fast, safe model serialization (required by accelerate 1.6.0)
 
 # LangChain Integration
 langchain = "0.1.0"
@@ -34,6 +35,7 @@ requests = "2.31.0"
 
 # Optional Dependencies (uncomment if needed)
 clickhouse-connect = "0.6.0"     # For ClickHouse integration
+setuptools = "69.0.0"            # For pkg_resources (ClickHouse adapter)
 # numpy = "1.26.4"                 # For numerical operations
 
 [tool.poetry.group.dev.dependencies]

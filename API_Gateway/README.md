@@ -1,6 +1,6 @@
-# Financial RAG API Gateway
+# API Gateway for RAG Benchmarking Platform
 
-Central API Gateway for the Financial RAG Benchmarking Platform with unified metrics collection and real-time analytics.
+Central API Gateway for the RAG Benchmarking Platform with unified metrics collection and real-time analytics.
 
 ## 🎯 Features
 
@@ -71,17 +71,29 @@ The platform uses a **single unified metrics system** (`enhanced_metrics.py`) th
 - **Performance Classification**: Automatic categorization of metrics
 - **Error Tracking**: Comprehensive error monitoring and analysis
 
-### **Automated CSV Exports**
-All metrics are automatically exported to the `Data/` directory:
+### **Organized CSV Exports** - **UPDATED**
+All metrics are automatically exported to organized directories:
 
 ```
 API_Gateway/Data/
-├── streaming_data_metrics.csv      # Live data ingestion metrics
-├── chunking_metrics.csv            # Text processing performance
-├── embedding_metrics.csv           # AI model benchmarks
-├── vector_db_metrics.csv           # Database operation metrics
-└── LLM_query_performance_*.csv     # RAG query analytics
+├── streaming_metrics/              # Real-time pipeline performance
+│   ├── vector_db_metrics.csv      # OPTIMIZED: 12 essential columns
+│   ├── chunking_metrics.csv       # OPTIMIZED: 7 essential columns
+│   ├── streaming_data_metrics.csv # Data ingestion performance
+│   └── embedding_metrics.csv      # AI model benchmarks
+└── query_metrics/                  # LLM query analysis
+    └── llm_query_metrics.csv      # NEW: 10 essential RAG columns
 ```
+
+### **🎯 Dashboard Performance Integration**
+The dashboard now displays **optimized metrics** with enhanced troubleshooting:
+
+| **Dashboard Metric** | **CSV Source** | **Performance Threshold** |
+|---------------------|----------------|---------------------------|
+| **Vector DB Retrieval** | `streaming_metrics/vector_db_metrics.csv` | <1000ms = Good |
+| **LLM Processing** | `query_metrics/llm_query_metrics.csv` | <3000ms = Good |
+| **Average Relevance** | `avg_relevance_score` | >0.5 = Good Quality |
+| **High-Quality Sources** | `docs_found` + relevance | >50% = Good Retrieval |
 
 ### **Real-time Streaming**
 - **WebSocket Support**: Live metrics broadcast to connected clients

@@ -15,12 +15,16 @@ import os
 # Fix protobuf compatibility issues
 os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 
+# Import global warning suppression for production
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+import warnings_suppression
+
 import logging
 import time
 import grpc
 from concurrent import futures
 from typing import List, Dict, Any
-import sys
 import os
 
 # Add proto directory to path for imports

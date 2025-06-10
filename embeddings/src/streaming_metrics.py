@@ -146,6 +146,49 @@ class StreamingMetricsCollector:
             self.timers["database_latency"].append(latency_ms)
             self._update_performance_stats()
 
+    def record_enhanced_database_operation(self, operation: str, table: str, success: bool,
+                                         latency_ms: float, records_affected: int,
+                                         operation_timestamp: datetime, native_metrics: Dict[str, Any]):
+        """Enhanced database operation recording with native ClickHouse metrics."""
+        with self.lock:
+            # Flatten native metrics for easier CSV export
+            flattened_native = self._flatten_native_metrics(native_metrics)
+
+            # Enhanced event with both custom and native data
+            enhanced_event = {
+                "timestamp": operation_timestamp,
+                "type": "database",
+                "operation": operation,
+                "table": table,
+                "success": success,
+                "latency_ms": latency_ms,
+                "records_affected": records_affected,
+                **flattened_native
+            }
+
+            self.database_events.append(enhanced_event)
+            self._cleanup_old_events()
+
+            if success:
+                self.counters[f"successful_{operation}"] += 1
+                self.health_status["clickhouse_connection"] = "healthy"
+            else:
+                self.counters[f"failed_{operation}"] += 1
+                self.health_status["clickhouse_connection"] = "unhealthy"
+
+            self.timers["database_latency"].append(latency_ms)
+            self._update_performance_stats()
+
+    def _flatten_native_metrics(self, native_metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Flatten nested native metrics for CSV export."""
+        flattened = {}
+        for category, metrics in native_metrics.items():
+            if isinstance(metrics, dict):
+                flattened.update(metrics)
+            else:
+                flattened[category] = metrics
+        return flattened
+
     def record_error(self, error_type: str, error_message: str, component: str,
                     ticker: Optional[str] = None):
         """Record an error event."""
@@ -317,7 +360,7 @@ class StreamingMetricsCollector:
                     "streaming_data_metrics.csv", streaming_data
                 )
 
-            # 2. CHUNKING METRICS
+            # 2. OPTIMIZED CHUNKING METRICS (7 essential columns)
             chunking_data = []
             for event in self.chunking_events:
                 if event["timestamp"] > cutoff:
@@ -327,12 +370,8 @@ class StreamingMetricsCollector:
                         "original_text_size": event["original_text_size"],
                         "chunk_count": event["chunk_count"],
                         "avg_chunk_size": event["avg_chunk_size"],
-                        "min_chunk_size": min(event["chunks_sizes"]) if event["chunks_sizes"] else 0,
-                        "max_chunk_size": max(event["chunks_sizes"]) if event["chunks_sizes"] else 0,
                         "chunking_latency_ms": event["latency_ms"],
-                        "chunking_efficiency": event["efficiency_ratio"],
-                        "chunk_size_variance": max(event["chunks_sizes"]) - min(event["chunks_sizes"]) if event["chunks_sizes"] else 0,
-                        "chunker_config": json.dumps(event["chunker_config"])
+                        "chunking_efficiency": event["efficiency_ratio"]
                     })
 
             if chunking_data:
@@ -360,45 +399,30 @@ class StreamingMetricsCollector:
                     "embedding_metrics.csv", embedding_data
                 )
 
-            # 4. VECTOR DATABASE METRICS
+            # 4. ENHANCED VECTOR DATABASE METRICS
             vector_db_data = []
             for event in self.database_events:
                 if event["timestamp"] > cutoff:
-                    # Determine operation type (ClickHouse MergeTree reality)
-                    operation_type = "indexing"  # Default for new inserts
-                    op_lower = event["operation"].lower()
+                    # Get enhanced operation classification
+                    operation_type = self._classify_enhanced_operation(event)
 
-                    # ClickHouse MergeTree reindexing patterns:
-                    if any(keyword in op_lower for keyword in ["optimize", "merge", "compact"]):
-                        operation_type = "background_merge"  # Automatic part merging
-                    elif "table_optimization" in op_lower or "final" in op_lower:
-                        operation_type = "manual_optimize"  # Manual OPTIMIZE TABLE FINAL
-                    elif any(keyword in op_lower for keyword in ["alter", "schema", "modify"]):
-                        operation_type = "schema_reindex"   # Schema changes trigger reindexing
-                    elif any(keyword in op_lower for keyword in ["update", "upsert", "replace"]):
-                        operation_type = "data_update"     # Data updates (rare in streaming)
-                    elif any(keyword in op_lower for keyword in ["delete", "remove", "drop"]):
-                        operation_type = "deletion"
-                    elif "bulk" in op_lower and event["records_affected"] > 10:
-                        operation_type = "bulk_insert"     # Large inserts that may trigger merging
-
-                    # Detect potential reindexing by latency patterns
-                    # Normal inserts: 50-200ms, Background merging: 500-2000ms, Manual optimize: 2000+ms
-                    if event["latency_ms"] > 2000:
-                        if operation_type == "indexing":
-                            operation_type = "suspected_background_merge"
-
-                    vector_db_data.append({
+                    # Optimized record - Essential benchmarking metrics only (12 columns)
+                    enhanced_record = {
                         "timestamp": event["timestamp"].isoformat(),
-                        "operation": event["operation"],
-                        "operation_type": operation_type,  # indexing/reindexing/deletion/optimization
-                        "table": event["table"],
-                        "success": event["success"],
                         "vd_latency_ms": event["latency_ms"],
-                        "records_affected": event["records_affected"],
                         "throughput_records_per_second": event["records_affected"] / (event["latency_ms"] / 1000) if event["latency_ms"] > 0 else 0,
-                        "performance_tier": "excellent" if event["latency_ms"] < 50 else "good" if event["latency_ms"] < 150 else "slow"
-                    })
+                        "performance_tier": self._get_performance_tier(event["latency_ms"]),
+                        "success": event["success"],
+                        "operation_type": operation_type,
+                        "ch_parts_count": event.get("ch_parts_count", 0),
+                        "ch_total_rows": event.get("ch_total_rows", 0),
+                        "ch_compression_ratio": event.get("ch_compression_ratio", 0),
+                        "compression_efficiency": self._calculate_compression_efficiency(event),
+                        "merge_activity_indicator": "active" if event.get("ch_active_merges", 0) > 0 else "idle",
+                        "ch_compressed_bytes": event.get("ch_compressed_bytes", 0)
+                    }
+
+                    vector_db_data.append(enhanced_record)
 
             if vector_db_data:
                 exported_files["vector_db"] = self._write_component_csv(
@@ -407,8 +431,8 @@ class StreamingMetricsCollector:
 
             return exported_files
 
-    def _write_component_csv(self, filename: str, data: List[Dict]) -> str:
-        """Helper method to write component CSV with append support."""
+    def _write_component_csv(self, filename: str, data: List[Dict], subfolder: str = "streaming_metrics") -> str:
+        """Helper method to write component CSV with append support and organized folders."""
         if not data:
             return filename
 
@@ -418,8 +442,12 @@ class StreamingMetricsCollector:
         data_dir = os.path.join(os.path.dirname(__file__), '../../API_Gateway/Data')
         os.makedirs(data_dir, exist_ok=True)
 
-        # Full path to CSV file
-        full_path = os.path.join(data_dir, filename)
+        # Create subfolder for organized metrics
+        subfolder_path = os.path.join(data_dir, subfolder)
+        os.makedirs(subfolder_path, exist_ok=True)
+
+        # Full path to CSV file in subfolder
+        full_path = os.path.join(subfolder_path, filename)
 
         file_exists = os.path.exists(full_path)
         mode = 'a' if file_exists else 'w'
@@ -498,6 +526,69 @@ class StreamingMetricsCollector:
 
         recent_values = values[-last_n:] if len(values) > last_n else values
         return sum(recent_values) / len(recent_values)
+
+    def _classify_enhanced_operation(self, event: Dict[str, Any]) -> str:
+        """Enhanced operation classification using native ClickHouse data as primary source."""
+        custom_latency = event["latency_ms"]
+        active_merges = event.get("ch_active_merges", 0)
+        parts_count = event.get("ch_parts_count", 0)
+        operation = event.get("operation", "unknown")
+
+        # PRIMARY: Use actual ClickHouse native data when available
+        if active_merges > 0:
+            # Real merges are happening
+            if custom_latency < 500:
+                return "indexing_with_background_merge"
+            else:
+                return "confirmed_background_merge"
+
+        # Check for high part count (indicates need for merging soon)
+        if parts_count > 100:
+            base_type = "indexing_high_part_count"
+        elif parts_count > 50:
+            base_type = "indexing_moderate_parts"
+        else:
+            # Normal indexing - no active merges, reasonable part count
+            base_type = "indexing"
+
+        # SECONDARY: Refine based on operation characteristics
+        if "optimize" in operation.lower() or "final" in operation.lower():
+            return "manual_optimize"
+        elif "bulk" in operation.lower() and event.get("records_affected", 0) > 10:
+            return "bulk_insert"
+        elif "delete" in operation.lower() or "remove" in operation.lower():
+            return "deletion"
+
+        # TERTIARY: Use latency patterns only for edge cases
+        if custom_latency > 5000:  # Very slow operations
+            return f"{base_type}_slow_operation"
+        elif custom_latency > 2000:  # Moderately slow
+            return f"{base_type}_moderate_latency"
+
+        # Detect potential compression overhead
+        ch_latency = event.get("ch_query_duration_ms", 0)
+        if ch_latency > 0 and abs(ch_latency - custom_latency) > 200:
+            return f"{base_type}_compression_overhead"
+
+        return base_type
+
+    def _calculate_compression_efficiency(self, event: Dict[str, Any]) -> float:
+        """Calculate compression efficiency from native ClickHouse data"""
+        compressed = event.get("ch_compressed_bytes", 0)
+        uncompressed = event.get("ch_uncompressed_bytes", 0)
+
+        if compressed > 0 and uncompressed > 0:
+            return round((1 - compressed / uncompressed) * 100, 2)  # Percentage saved
+        return 0.0
+
+    def _get_performance_tier(self, latency_ms: float) -> str:
+        """Performance tier classification based on latency"""
+        if latency_ms < 50:
+            return "excellent"
+        elif latency_ms < 150:
+            return "good"
+        else:
+            return "slow"
 
     def _update_overall_health(self):
         """Update overall system health based on component health."""

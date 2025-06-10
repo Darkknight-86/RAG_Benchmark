@@ -256,11 +256,11 @@ class EnhancedMetricsCollector:
 
         cutoff_time = time.time() - (minutes * 60)
 
-        # Ensure Data directory exists and use centralized location
+        # Ensure query_metrics directory exists and use correct location
         import os
         # Get the workspace root directory (3 levels up from this file)
         workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        data_dir = os.path.join(workspace_root, 'API_Gateway', 'Data')
+        data_dir = os.path.join(workspace_root, 'API_Gateway', 'Data', 'query_metrics')
         os.makedirs(data_dir, exist_ok=True)
 
         # Full path to CSV file
@@ -283,43 +283,64 @@ class EnhancedMetricsCollector:
                         search_metrics = metadata.get('search_metrics', {})
                         retrieval_quality = metadata.get('retrieval_quality', {})
 
+                        # Debug: Print retrieval_quality data to see what's actually there
+                        print(f"🔍 Debug retrieval_quality: {retrieval_quality}")
+                        print(f"🔍 Debug metadata keys: {list(metadata.keys())}")
+
+                        # Enhanced field extraction with multiple fallbacks
+                        docs_found = 0
+                        avg_relevance = 0.0
+
+                        # Try multiple sources for docs_found
+                        if retrieval_quality.get('docs_found'):
+                            docs_found = retrieval_quality.get('docs_found', 0)
+                        elif metadata.get('docs_found'):
+                            docs_found = metadata.get('docs_found', 0)
+                        elif len(search_strategies) > 0:
+                            # Fallback: count from search strategies
+                            for strategy in search_strategies:
+                                if 'docs' in strategy:
+                                    try:
+                                        docs_count = strategy.split(':')[1].strip().split()[0]
+                                        docs_found += int(docs_count)
+                                    except:
+                                        pass
+
+                        # Try multiple sources for avg_relevance
+                        if retrieval_quality.get('avg_relevance'):
+                            avg_relevance = retrieval_quality.get('avg_relevance', 0.0)
+                        elif retrieval_quality.get('avg_relevance_score'):
+                            avg_relevance = retrieval_quality.get('avg_relevance_score', 0.0)
+                        elif metadata.get('avg_relevance_score'):
+                            avg_relevance = metadata.get('avg_relevance_score', 0.0)
+
+                        print(f"🔍 Final values - docs_found: {docs_found}, avg_relevance: {avg_relevance}")
+
+                        # Simplified CSV structure matching LLM service format
                         query_events.append({
                             'timestamp': datetime.fromtimestamp(event.timestamp).isoformat(),
-                            'query_type': 'financial' if 'financial' in metric_type else 'general',
-                            'query': metadata.get('query', ''),
-                            'ticker': metadata.get('ticker', ''),
-                            'response': metadata.get('response', ''),
-                            'total_time_seconds': round(event.value, 4),
-                            'vector_latency_seconds': round(metadata.get('vector_latency', 0), 4),
-                            'llm_latency_seconds': round(metadata.get('llm_latency', 0), 4),
+                            'query_type': 'rag',
+                            'success': True,  # Assume success if processing completed
+                            'vector_latency_ms': round(metadata.get('vector_latency', 0) * 1000, 2),
+                            'llm_latency_ms': round(metadata.get('llm_latency', 0) * 1000, 2),
+                            'total_time_ms': round(event.value * 1000, 2),
                             'tokens_used': metadata.get('tokens_used', 0),
-                            'model_name': metadata.get('model_name', ''),
-                            # New search strategy metrics
-                            'search_strategies_used': ', '.join(search_strategies) if search_strategies else '',
-                            'similarity_search_docs': search_metrics.get('similarity_search', 0),
-                            'crypto_enhanced_docs': search_metrics.get('crypto_enhanced', 0),
-                            'broad_search_docs': search_metrics.get('broad_search', 0),
-                            # New retrieval quality metrics
-                            'total_docs_found': retrieval_quality.get('docs_found', 0),
-                            'avg_relevance_score': round(retrieval_quality.get('avg_relevance', 0), 3),
-                            'high_quality_docs': retrieval_quality.get('high_quality_docs', 0),
-                            'high_quality_ratio': round(retrieval_quality.get('high_quality_ratio', 0), 3),
-                            'status': metadata.get('status', '')
+                            'docs_found': docs_found,
+                            'avg_relevance_score': round(avg_relevance, 3),
+                            'model_name': metadata.get('model_name', 'meta-llama/Llama-3.2-1B-Instruct')
                         })
 
         # Sort by timestamp
         query_events.sort(key=lambda x: x['timestamp'])
 
-        # Write readable CSV
+        # Write simplified CSV matching LLM service format
         if query_events:
             import csv
             with open(full_path, 'w', newline='', encoding='utf-8') as csvfile:
                 fieldnames = [
-                    'timestamp', 'query_type', 'query', 'ticker', 'response',
-                    'total_time_seconds', 'vector_latency_seconds', 'llm_latency_seconds',
-                    'tokens_used', 'model_name', 'search_strategies_used', 'similarity_search_docs',
-                    'crypto_enhanced_docs', 'broad_search_docs', 'total_docs_found', 'avg_relevance_score',
-                    'high_quality_docs', 'high_quality_ratio', 'status'
+                    'timestamp', 'query_type', 'success', 'vector_latency_ms',
+                    'llm_latency_ms', 'total_time_ms', 'tokens_used',
+                    'docs_found', 'avg_relevance_score', 'model_name'
                 ]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()

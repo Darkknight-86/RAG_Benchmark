@@ -60,9 +60,9 @@ class MultiDatabase:
                     logger.warning(f"Adapter type '{adapter_type}' not implemented yet, skipping")
                     continue
 
-                logger.info(f"✅ Successfully initialized {adapter_type} adapter")
+                logger.info(f"Successfully initialized {adapter_type} adapter")
             except Exception as e:
-                logger.error(f"❌ Failed to initialize {adapter_type} adapter: {str(e)}")
+                logger.error(f"Failed to initialize {adapter_type} adapter: {str(e)}")
                 # Continue with other adapters
 
         if not self.adapters:
@@ -105,19 +105,19 @@ class MultiDatabase:
                 )
                 if success:
                     success_count += 1
-                    logger.debug(f"✅ Successfully inserted vector for ID {id} into {adapter_type}")
+                    logger.debug(f"Successfully inserted vector for ID {id} into {adapter_type}")
                 else:
-                    logger.warning(f"⚠️ Failed to insert vector for ID {id} into {adapter_type}")
+                    logger.warning(f"Failed to insert vector for ID {id} into {adapter_type}")
             except Exception as e:
-                logger.error(f"❌ Error inserting vector for ID {id} into {adapter_type}: {str(e)}")
+                logger.error(f"Error inserting vector for ID {id} into {adapter_type}: {str(e)}")
 
         overall_success = success_count > 0
         if success_count == total_adapters:
-            logger.debug(f"✅ Successfully inserted vector for ID {id} into all {total_adapters} databases")
+            logger.debug(f"Successfully inserted vector for ID {id} into all {total_adapters} databases")
         elif success_count > 0:
-            logger.warning(f"⚠️ Partially successful: inserted vector for ID {id} into {success_count}/{total_adapters} databases")
+            logger.warning(f"Partially successful: inserted vector for ID {id} into {success_count}/{total_adapters} databases")
         else:
-            logger.error(f"❌ Failed to insert vector for ID {id} into any database")
+            logger.error(f"Failed to insert vector for ID {id} into any database")
 
         return overall_success
 
@@ -154,6 +154,18 @@ class MultiDatabase:
         except Exception as e:
             logger.error(f"Error searching vectors in {self.primary_adapter_type}: {str(e)}")
             return []
+
+    def get_clickhouse_client(self):
+        """
+        Expose ClickHouse client for native metrics.
+
+        Returns:
+            ClickHouse client instance if available, None otherwise
+        """
+        for adapter_type, adapter in self.adapters.items():
+            if adapter_type == "clickhouse" and hasattr(adapter, 'client'):
+                return adapter.client
+        return None
 
     def get_stats(self) -> Dict[str, Any]:
         """
