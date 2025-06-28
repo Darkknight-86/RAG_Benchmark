@@ -24,6 +24,12 @@ RUN poetry config installer.max-workers 10
 # Copy all source code
 COPY . .
 
+# Debug: List contents to verify copy
+RUN ls -la /app/
+RUN ls -la /app/API_Gateway/ || echo "API_Gateway not found"
+RUN ls -la /app/Embeddings/ || echo "Embeddings not found"
+RUN ls -la /app/LLM/ || echo "LLM not found"
+
 # Create necessary directories
 RUN mkdir -p /app/data
 RUN mkdir -p /app/API_Gateway/exports
