@@ -31,13 +31,13 @@ RUN mkdir -p /tmp
 
 # Install dependencies for all services
 # API Gateway
-RUN cd API_Gateway && poetry install --only main --no-dev
+RUN cd API_Gateway && poetry install --only main
 
 # Embeddings Service
-RUN cd Embeddings && poetry install --only main --no-dev
+RUN cd Embeddings && poetry install --only main
 
 # LLM Service
-RUN cd LLM && poetry install --only main --no-dev
+RUN cd LLM && poetry install --only main
 
 # Expose ports for all services
 EXPOSE 8502 8000 50051 50054
