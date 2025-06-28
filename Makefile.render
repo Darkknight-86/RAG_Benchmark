@@ -1,0 +1,112 @@
+# Render Deployment Makefile - RAG Benchmarking Platform
+.PHONY: help install start stop health check-env logs
+
+# Default target
+help:
+	@echo "🚀 RAG Benchmarking Platform - Render Deployment"
+	@echo ""
+	@echo "📋 Available Commands:"
+	@echo "  make install  - Install all dependencies"
+	@echo "  make start    - Start all services (Render production)"
+	@echo "  make health   - Check service health"
+	@echo "  make logs     - Show service logs"
+	@echo "  make stop     - Stop all services"
+	@echo ""
+
+# Install dependencies for all services
+install:
+	@echo "📦 Installing dependencies for Render deployment..."
+	@echo "  → Installing API Gateway dependencies..."
+	cd API_Gateway && poetry install --only main --no-dev
+	@echo "  → Installing Embeddings dependencies..."
+	cd Embeddings && poetry install --only main --no-dev
+	@echo "  → Installing LLM service dependencies..."
+	cd LLM && poetry install --only main --no-dev
+	@echo "✅ All dependencies installed!"
+
+# Check environment variables
+check-env:
+	@echo "🔍 Checking environment variables..."
+	@echo "  → PORT: $${PORT:-'Not set (using default 8502)'}"
+	@echo "  → ENVIRONMENT: $${ENVIRONMENT:-'Not set (using development)'}"
+	@if [ -z "$$CLICKHOUSE_HOST" ]; then echo "  → ⚠️ CLICKHOUSE_HOST not set - using demo mode"; else echo "  → ✅ CLICKHOUSE_HOST configured"; fi
+	@if [ -z "$$HUGGINGFACE_HUB_TOKEN" ]; then echo "  → ⚠️ HUGGINGFACE_HUB_TOKEN not set - LLM features limited"; else echo "  → ✅ HUGGINGFACE_HUB_TOKEN configured"; fi
+	@echo "✅ Environment check complete"
+
+# Start all services for Render (production mode)
+start: check-env
+	@echo "🚀 Starting RAG Benchmarking Platform (Render Production)..."
+
+	# Set default port if not provided
+	@export PORT=$${PORT:-8502}
+
+	# Start Embeddings service in background
+	@echo "  → Starting Embeddings service on port 50051..."
+	cd Embeddings && PYTHONPATH=src poetry run python src/main.py &
+	@sleep 8
+
+	# Start LLM service in background
+	@echo "  → Starting LLM service on port 50054..."
+	cd LLM && PYTHONPATH=src poetry run python src/main.py &
+	@sleep 8
+
+	# Start API Gateway in background
+	@echo "  → Starting API Gateway on port 8000..."
+	cd API_Gateway && PYTHONPATH=src poetry run uvicorn api_gateway.fastapi_server:app --host 0.0.0.0 --port 8000 &
+	@sleep 8
+
+	# Start Streamlit Dashboard (foreground - main process for Render)
+	@echo "  → Starting Streamlit Dashboard on port $${PORT:-8502}..."
+	@echo "  → Dashboard will be available at your Render URL"
+	cd API_Gateway && PYTHONPATH=src poetry run streamlit run src/dashboard/enhanced_streamlit_dashboard.py \
+		--server.port $${PORT:-8502} \
+		--server.address 0.0.0.0 \
+		--server.headless true \
+		--server.fileWatcherType none \
+		--server.enableCORS false \
+		--server.enableXsrfProtection false
+
+# Health check for all services
+health:
+	@echo "🏥 Checking service health..."
+	@echo "  → Checking API Gateway (port 8000)..."
+	@curl -f http://localhost:8000/api/health 2>/dev/null && echo "    ✅ API Gateway healthy" || echo "    ❌ API Gateway unhealthy"
+	@echo "  → Checking Dashboard (port $${PORT:-8502})..."
+	@curl -f http://localhost:$${PORT:-8502} 2>/dev/null && echo "    ✅ Dashboard healthy" || echo "    ❌ Dashboard unhealthy"
+	@echo "  → Checking gRPC services..."
+	@lsof -i :50051 >/dev/null 2>&1 && echo "    ✅ Embeddings service running" || echo "    ❌ Embeddings service not running"
+	@lsof -i :50054 >/dev/null 2>&1 && echo "    ✅ LLM service running" || echo "    ❌ LLM service not running"
+
+# Show logs for debugging
+logs:
+	@echo "📋 Service Logs:"
+	@echo "  → Recent process activity:"
+	@ps aux | grep -E "(python|uvicorn|streamlit)" | grep -v grep || echo "    No services running"
+	@echo "  → Port usage:"
+	@netstat -tlnp 2>/dev/null | grep -E ":(8000|8502|50051|50054)" || echo "    No services listening on expected ports"
+
+# Stop all services
+stop:
+	@echo "🛑 Stopping all services..."
+	@pkill -f "src/main.py" || true
+	@pkill -f "uvicorn" || true
+	@pkill -f "streamlit" || true
+	@pkill -f "api_gateway.fastapi_server" || true
+	@sleep 2
+	@echo "✅ All services stopped!"
+
+# Render-specific startup (alternative entry point)
+render-start:
+	@echo "🎯 Render-optimized startup sequence..."
+	@export PORT=$${PORT:-8502}
+	@make start
+
+# Quick service status
+status:
+	@echo "📊 Service Status:"
+	@echo "  → Environment: $${ENVIRONMENT:-development}"
+	@echo "  → Port: $${PORT:-8502}"
+	@echo "  → Services:"
+	@pgrep -f "src/main.py" >/dev/null && echo "    ✅ Background services running" || echo "    ❌ Background services not running"
+	@pgrep -f "uvicorn" >/dev/null && echo "    ✅ API Gateway running" || echo "    ❌ API Gateway not running"
+	@pgrep -f "streamlit" >/dev/null && echo "    ✅ Dashboard running" || echo "    ❌ Dashboard not running"

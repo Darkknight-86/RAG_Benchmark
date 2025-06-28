@@ -802,6 +802,74 @@ def render_sidebar():
     with st.sidebar:
         st.markdown("## 🎯 Query Analysis Tools")
 
+        # User Credentials Section
+        st.markdown('<div class="info-header">🔐 User Credentials</div>', unsafe_allow_html=True)
+
+        with st.expander("🔑 Configure Your Credentials", expanded=False):
+            st.markdown("**Enter your credentials to test with your own data:**")
+
+            # ClickHouse credentials
+            st.markdown("**ClickHouse Database:**")
+            clickhouse_host = st.text_input("ClickHouse Host",
+                                           value=st.session_state.get('clickhouse_host', ''),
+                                           placeholder="your-instance.clickhouse.cloud",
+                                           help="Your ClickHouse Cloud host")
+            clickhouse_user = st.text_input("ClickHouse User",
+                                           value=st.session_state.get('clickhouse_user', 'default'),
+                                           placeholder="default")
+            clickhouse_password = st.text_input("ClickHouse Password",
+                                               value=st.session_state.get('clickhouse_password', ''),
+                                               type="password",
+                                               placeholder="Your ClickHouse password")
+            clickhouse_database = st.text_input("ClickHouse Database",
+                                               value=st.session_state.get('clickhouse_database', 'default'),
+                                               placeholder="default")
+
+            # HuggingFace credentials
+            st.markdown("**HuggingFace API:**")
+            huggingface_token = st.text_input("HuggingFace Token",
+                                             value=st.session_state.get('huggingface_token', ''),
+                                             type="password",
+                                             placeholder="hf_xxxxxxxxxxxxxxxxxxxx",
+                                             help="Your HuggingFace API token for LLM access")
+
+            # Save credentials button
+            if st.button("💾 Save Credentials", type="primary"):
+                # Store in session state
+                st.session_state.clickhouse_host = clickhouse_host
+                st.session_state.clickhouse_user = clickhouse_user
+                st.session_state.clickhouse_password = clickhouse_password
+                st.session_state.clickhouse_database = clickhouse_database
+                st.session_state.huggingface_token = huggingface_token
+
+                # Create temporary .env content
+                env_content = f"""# Temporary user credentials for this session
+CLICKHOUSE_HOST={clickhouse_host}
+CLICKHOUSE_USER={clickhouse_user}
+CLICKHOUSE_PASSWORD={clickhouse_password}
+CLICKHOUSE_DATABASE={clickhouse_database}
+CLICKHOUSE_PORT=8443
+CLICKHOUSE_SECURE=true
+HUGGINGFACE_HUB_TOKEN={huggingface_token}
+
+# Default LLM settings
+DEFAULT_LLM_MODEL=meta-llama/Llama-3.2-1B-Instruct
+DEFAULT_TEMPERATURE=0.7
+DEFAULT_MAX_TOKENS=1000
+DEFAULT_TOP_K=5
+SUPPORTED_MODELS=meta-llama/Llama-3.2-1B-Instruct,meta-llama/Llama-3.2-3B-Instruct
+"""
+
+                # Write to temporary .env file
+                try:
+                    import os
+                    with open('/tmp/.env.user', 'w') as f:
+                        f.write(env_content)
+                    st.success("✅ Credentials saved for this session!")
+                    st.info("🔄 Restart services to use your credentials")
+                except Exception as e:
+                    st.error(f"❌ Error saving credentials: {str(e)}")
+
         # Connection status with colored header
         st.markdown('<div class="status-header">🔗 Connection Status</div>', unsafe_allow_html=True)
         try:
@@ -819,6 +887,16 @@ def render_sidebar():
                 st.error("❌ Gateway Connection Failed")
         except:
             st.error("❌ Cannot reach API Gateway")
+
+        # Display current credentials status
+        st.markdown('<div class="info-header">🔐 Credentials Status</div>', unsafe_allow_html=True)
+        if st.session_state.get('clickhouse_host'):
+            st.success("✅ Credentials Configured")
+            st.info(f"**ClickHouse:** {st.session_state.get('clickhouse_host', 'Not set')[:20]}...")
+            st.info(f"**HuggingFace:** {'✅ Set' if st.session_state.get('huggingface_token') else '❌ Not set'}")
+        else:
+            st.warning("⚠️ Using Demo Mode")
+            st.info("Configure your credentials above to use your own data")
 
         # System info with colored header
         st.markdown('<div class="info-header">ℹ️ System Information</div>', unsafe_allow_html=True)
