@@ -633,19 +633,33 @@ def render_header():
     """Render the main header section"""
     if DEMO_MODE:
         st.markdown("""
-        <div style="background: linear-gradient(90deg, #ff6b6b, #ffa726); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; text-align: center; color: white;">
-            <h2>🎯 RAG Benchmarking Platform - DEMO MODE</h2>
-            <p><strong>📊 Viewing Sample Data</strong> • Fork this repo to run the full 12k+ line system locally!</p>
-            <p>🚀 <strong>Full System:</strong> Live Financial Data • ClickHouse Vector DB • Llama 3.2 LLM • 4 Microservices</p>
-            <p>📂 <strong>GitHub:</strong> <a href="https://github.com/Darkknight-86/RAG_Benchmark" style="color: white; text-decoration: underline;">Fork & Run Locally</a></p>
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 15px; margin-bottom: 2rem; text-align: center; color: white; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+            <h1 style="margin: 0; font-size: 2.5rem;">🚀 RAG Benchmarking Platform</h1>
+            <h2 style="margin: 0.5rem 0; font-size: 1.5rem; opacity: 0.9;">✨ LIVE DEMO - Sample Data Showcase</h2>
+            <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0;">
+                <p style="font-size: 1.2rem; margin: 0.5rem 0;"><strong>🎯 12,000+ Line Production System</strong></p>
+                <p style="font-size: 1.1rem; margin: 0.5rem 0;">📊 <strong>3 Microservices:</strong> API Gateway + Embeddings + LLM Service</p>
+                <p style="font-size: 1.1rem; margin: 0.5rem 0;">⚡ <strong>Tech Stack:</strong> FastAPI • ClickHouse • Llama 3.2 • Apple Silicon GPU</p>
+                <p style="font-size: 1.1rem; margin: 0.5rem 0;">🔄 <strong>Live Features:</strong> Real-time Financial Data • Vector RAG • Performance Analytics</p>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <a href="https://github.com/Darkknight-86/RAG_Benchmark" target="_blank" style="background: #28a745; color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 1.1rem; margin: 0 10px; display: inline-block;">
+                    📂 Fork Repository
+                </a>
+                <a href="https://github.com/Darkknight-86/RAG_Benchmark#-quick-start" target="_blank" style="background: #17a2b8; color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 1.1rem; margin: 0 10px; display: inline-block;">
+                    🚀 Setup Guide
+                </a>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.95rem; opacity: 0.8;">
+                👆 <strong>Try the downloads below!</strong> • This demo shows real sample data from the production system
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="main-header">
-        <h1>🚀 RAG System Enterprise Dashboard</h1>
-        <h3>🎯 Vector Database ↔ LLM Quality Testing Platform</h3>
-        <p><strong>Powered by:</strong> Llama 3.2 1B • ClickHouse Vector DB • Live Trading Data</p>
+        <h1>🚀 RAG System Dashboard</h1>
+        <p><strong>Powered by:</strong> Llama 3.2 1B • ClickHouse Vector DB • Yahoo Live Trading Data</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1075,7 +1089,7 @@ SUPPORTED_MODELS=meta-llama/Llama-3.2-1B-Instruct,meta-llama/Llama-3.2-3B-Instru
 
         # System info with colored header
         st.markdown('<div class="info-header">ℹ️ System Information</div>', unsafe_allow_html=True)
-        st.info(f"**Dashboard Version:** 3.1.0 Fixed\n**Mode:** Manual Analysis\n**Query History:** {len(st.session_state.query_history)} queries")
+        st.info(f"**Dashboard Version:** 2.1.0 Fixed")
 
 # Analysis views and batch testing functionality removed as requested
 
