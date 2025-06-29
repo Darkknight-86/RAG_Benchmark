@@ -1,21 +1,23 @@
 services:
-  # Single unified service - All microservices in one container (matches working Docker setup)
+  # Demo Mode - Lightweight Streamlit dashboard with sample data (free tier compatible)
   - type: web
     name: rag-benchmarking-platform
     env: docker
     dockerfilePath: ./Dockerfile.render
-    plan: starter  # Can upgrade to standard for better performance
+    plan: free
     healthCheckPath: /
     envVars:
       # Render Configuration
       - key: PORT
-        value: 8502
+        value: 10000
+      - key: DEMO_MODE
+        value: true
       - key: ENVIRONMENT
         value: production
 
       # Streamlit Configuration (for dashboard)
       - key: STREAMLIT_SERVER_PORT
-        value: 8502
+        value: 10000
       - key: STREAMLIT_SERVER_ADDRESS
         value: 0.0.0.0
       - key: STREAMLIT_SERVER_HEADLESS

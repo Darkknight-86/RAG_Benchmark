@@ -1,131 +1,37 @@
-# Render Deployment Dockerfile - RAG Benchmarking Platform
-# Optimized for Render.com deployment with all microservices
-# Matches the working Docker setup exactly
+# Demo Dockerfile - RAG Benchmarking Platform
+# Lightweight version for Render.com free tier (512MB)
+# Shows dashboard with sample data - full system available via repo fork
 
-FROM python:3.11-bookworm AS builder
-
-# Install system dependencies for building
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 - && \
-    ln -s /root/.local/bin/poetry /usr/local/bin/poetry
-
-WORKDIR /app
-
-# Copy pyproject.toml files and install dependencies for all services
-# API Gateway
-COPY API_Gateway/pyproject.toml API_Gateway/poetry.lock* ./api_gateway/
-RUN cd api_gateway && poetry config virtualenvs.create false && poetry install --only main --no-root
-
-# Embeddings Service (using correct lowercase directory name)
-COPY embeddings/pyproject.toml embeddings/poetry.lock* ./embeddings/
-RUN cd embeddings && poetry config virtualenvs.create false && poetry install --only main --no-root
-
-# LLM Service
-COPY LLM/pyproject.toml LLM/poetry.lock* ./llm/
-RUN cd llm && poetry config virtualenvs.create false && poetry install --only main --no-root
-
-# Production stage
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy Python packages from builder
-COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Install minimal dependencies for Streamlit only
+RUN pip install --no-cache-dir \
+    streamlit==1.28.0 \
+    pandas==2.1.0 \
+    requests==2.31.0
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Copy only the dashboard and sample data
+COPY API_Gateway/src/dashboard/enhanced_streamlit_dashboard.py ./dashboard.py
+COPY sample_data/ ./sample_data/
 
-# Copy all application source (matching our working docker-compose structure)
-COPY API_Gateway/src ./api_gateway_src
-COPY API_Gateway/protos ./protos
+# Create demo environment
+ENV DEMO_MODE=true
+ENV PORT=10000
 
-# Create Data directory structure (not tracked in Git due to .gitignore *.csv)
-RUN mkdir -p ./API_Gateway_Data/query_metrics ./API_Gateway_Data/streaming_metrics
+# Expose port for Render
+EXPOSE 10000
 
-COPY embeddings/src ./embeddings_src
-COPY embeddings/src/Adapters ./llm_src/Adapters
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT} || exit 1
 
-COPY LLM/src ./llm_src
-
-# Copy warnings_suppression.py to all locations where it might be needed
-COPY warnings_suppression.py ./
-COPY warnings_suppression.py /warnings_suppression.py
-
-# Create necessary directories
-RUN mkdir -p ./API_Gateway_Data/query_metrics ./API_Gateway_Data/streaming_metrics
-RUN mkdir -p /root/.cache/huggingface
-
-# Generate gRPC stubs for all services (matching working Docker structure)
-# API Gateway - generate in api_gateway/proto directory
-RUN mkdir -p ./api_gateway_src/api_gateway/proto && \
-    python -m grpc_tools.protoc -I./protos --python_out=./api_gateway_src/api_gateway/proto --grpc_python_out=./api_gateway_src/api_gateway/proto ./protos/rag_service.proto
-
-# Embeddings - generate in proto directory
-RUN mkdir -p ./embeddings_src/proto && \
-    python -m grpc_tools.protoc -I./protos --python_out=./embeddings_src/proto --grpc_python_out=./embeddings_src/proto ./protos/rag_service.proto
-
-# LLM - generate in proto directory
-RUN mkdir -p ./llm_src/proto && \
-    python -m grpc_tools.protoc -I./protos --python_out=./llm_src/proto --grpc_python_out=./llm_src/proto ./protos/rag_service.proto
-
-# Set environment variables to match our working setup
-ENV PYTHONPATH=/app
-ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-ENV TRANSFORMERS_CACHE=/root/.cache/huggingface
-ENV HF_HOME=/root/.cache/huggingface
-
-# Expose ports for all services
-EXPOSE 8502 8000 50051 50054
-
-# Health check for the main dashboard
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:8502 || exit 1
-
-# Create startup script that matches our working Docker setup
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-echo "🚀 Starting RAG Benchmarking Platform on Render..."\n\
-\n\
-# Start Embeddings service in background\n\
-echo "  → Starting Embeddings service on port 50051..."\n\
-cd /app && PYTHONPATH=embeddings_src python embeddings_src/main.py &\n\
-sleep 5\n\
-\n\
-# Start streaming service in background\n\
-echo "  → Starting Streaming service..."\n\
-cd /app && PYTHONPATH=embeddings_src python embeddings_src/streaming.py &\n\
-sleep 3\n\
-\n\
-# Start LLM service in background\n\
-echo "  → Starting LLM service on port 50054..."\n\
-cd /app && PYTHONPATH=llm_src python llm_src/main.py &\n\
-sleep 5\n\
-\n\
-# Start API Gateway in background\n\
-echo "  → Starting API Gateway on port 8000..."\n\
-cd /app && PYTHONPATH=api_gateway_src uvicorn api_gateway.fastapi_server:app --host 0.0.0.0 --port 8000 &\n\
-sleep 3\n\
-\n\
-# Start Streamlit Dashboard (foreground - main process)\n\
-echo "  → Starting Enhanced Dashboard on port ${PORT:-8502}..."\n\
-echo "  → Dashboard will be available at your Render URL"\n\
-cd /app && PYTHONPATH=api_gateway_src streamlit run api_gateway_src/dashboard/enhanced_streamlit_dashboard.py \\\n\
-    --server.port ${PORT:-8502} \\\n\
-    --server.address 0.0.0.0 \\\n\
-    --server.headless true \\\n\
-    --server.fileWatcherType none \\\n\
-    --server.enableCORS false \\\n\
-    --server.enableXsrfProtection false\n\
-' > /app/start_render.sh && chmod +x /app/start_render.sh
-
-CMD ["/app/start_render.sh"]
+# Start Streamlit dashboard in demo mode
+CMD streamlit run dashboard.py \
+    --server.port ${PORT} \
+    --server.address 0.0.0.0 \
+    --server.headless true \
+    --server.fileWatcherType none \
+    --server.enableCORS false \
+    --server.enableXsrfProtection false
