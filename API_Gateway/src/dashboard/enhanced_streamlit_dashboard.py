@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 import requests
 from typing import Dict, List, Any
 import logging
+import pandas as pd
+import os
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -504,6 +507,53 @@ class ModernDashboard:
     """Enhanced dashboard with modern design and LLM query functionality"""
 
     @staticmethod
+    def load_csv_file(file_path: str) -> pd.DataFrame:
+        """Load CSV file and return as DataFrame"""
+        try:
+            if os.path.exists(file_path):
+                df = pd.read_csv(file_path)
+                return df
+            else:
+                return pd.DataFrame()
+        except Exception as e:
+            logger.error(f"Error loading CSV file {file_path}: {e}")
+            return pd.DataFrame()
+
+    @staticmethod
+    def get_available_metrics_files() -> Dict[str, str]:
+        """Get available metrics CSV files"""
+        # For Docker/Render deployment, files are in /app/API_Gateway_Data/
+        # For local development, files are in API_Gateway/Data/
+        base_paths = [
+            "/app/API_Gateway_Data",  # Docker/Render path
+            "API_Gateway/Data",       # Local development path
+            "../API_Gateway/Data",    # Alternative local path
+            "../../API_Gateway/Data"  # Alternative path from embeddings service
+        ]
+
+        files = {}
+
+        for base_path in base_paths:
+            if os.path.exists(base_path):
+                # Streaming metrics
+                streaming_path = os.path.join(base_path, "streaming_metrics")
+                if os.path.exists(streaming_path):
+                    for metric_type in ["streaming_data", "chunking", "embedding", "vector_db"]:
+                        file_path = os.path.join(streaming_path, f"{metric_type}_metrics.csv")
+                        if os.path.exists(file_path):
+                            files[f"{metric_type}_metrics"] = file_path
+
+                # Query metrics
+                query_path = os.path.join(base_path, "query_metrics")
+                if os.path.exists(query_path):
+                    for file_name in os.listdir(query_path):
+                        if file_name.endswith('.csv'):
+                            files[file_name.replace('.csv', '')] = os.path.join(query_path, file_name)
+                break
+
+        return files
+
+    @staticmethod
     def fetch_current_metrics() -> Dict[str, Any]:
         """Fetch current metrics from FastAPI Gateway"""
         try:
@@ -761,41 +811,137 @@ def render_query_history():
                     st.write(f"**Time:** {metrics.get('total_time', 0):.2f}s")
 
 def render_export_section():
-    """Render simplified CSV export functionality - LLM queries only"""
-    st.markdown('<div class="section-header">📤 LLM Query Export</div>', unsafe_allow_html=True)
+    """Render enhanced CSV download functionality for all metrics"""
+    st.markdown('<div class="section-header">📤 Download Metrics Data</div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="export-section">
-        <h3>💾 Export LLM Query Metrics</h3>
-        <p>Download LLM query performance data for analysis and reporting.
-        <em>Note: Live streaming data exports automatically every 5 minutes.</em></p>
+        <h3>💾 Download RAG Pipeline Metrics</h3>
+        <p>Download real-time metrics data from the RAG pipeline components for analysis and reporting.
+        <em>Files are updated automatically every 30 seconds by the streaming service.</em></p>
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([2, 1, 1])
+    # Get available files
+    available_files = ModernDashboard.get_available_metrics_files()
+
+    if not available_files:
+        st.warning("⚠️ No metrics files found. Ensure the streaming service is running and generating data.")
+        return
+
+    # Organize files by category
+    streaming_files = {k: v for k, v in available_files.items() if 'streaming_data' in k or 'chunking' in k or 'embedding' in k or 'vector_db' in k}
+    query_files = {k: v for k, v in available_files.items() if k not in streaming_files}
+
+    # Streaming Metrics Section
+    if streaming_files:
+        st.markdown("### 📊 Live Streaming Pipeline Metrics")
+
+        cols = st.columns(2)
+
+        for i, (file_key, file_path) in enumerate(streaming_files.items()):
+            with cols[i % 2]:
+                # Load the CSV data
+                df = ModernDashboard.load_csv_file(file_path)
+
+                if not df.empty:
+                    # File info
+                    file_size = os.path.getsize(file_path) / 1024  # KB
+                    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+
+                    # Display file info
+                    st.markdown(f"**📁 {file_key.replace('_', ' ').title()}**")
+                    st.caption(f"📈 {len(df)} records • 💾 {file_size:.1f} KB • 🕐 Updated: {last_modified.strftime('%H:%M:%S')}")
+
+                    # Preview first few rows
+                    with st.expander(f"👁️ Preview {file_key}", expanded=False):
+                        st.dataframe(df.head(3), use_container_width=True)
+
+                    # Convert DataFrame to CSV for download
+                    csv_buffer = io.StringIO()
+                    df.to_csv(csv_buffer, index=False)
+                    csv_data = csv_buffer.getvalue()
+
+                    # Download button
+                    st.download_button(
+                        label=f"📥 Download {file_key}.csv",
+                        data=csv_data,
+                        file_name=f"{file_key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        key=f"download_{file_key}",
+                        help=f"Download {len(df)} records as CSV file"
+                    )
+                else:
+                    st.info(f"📄 {file_key}: No data available yet")
+
+    # Query Metrics Section
+    if query_files:
+        st.markdown("### 🧠 LLM Query Metrics")
+
+        for file_key, file_path in query_files.items():
+            df = ModernDashboard.load_csv_file(file_path)
+
+            if not df.empty:
+                col1, col2 = st.columns([3, 1])
+
+                with col1:
+                    file_size = os.path.getsize(file_path) / 1024  # KB
+                    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+
+                    st.markdown(f"**📁 {file_key.replace('_', ' ').title()}**")
+                    st.caption(f"📈 {len(df)} records • 💾 {file_size:.1f} KB • 🕐 Updated: {last_modified.strftime('%H:%M:%S')}")
+
+                with col2:
+                    # Convert DataFrame to CSV for download
+                    csv_buffer = io.StringIO()
+                    df.to_csv(csv_buffer, index=False)
+                    csv_data = csv_buffer.getvalue()
+
+                    st.download_button(
+                        label=f"📥 Download",
+                        data=csv_data,
+                        file_name=f"{file_key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        key=f"download_query_{file_key}",
+                        help=f"Download {len(df)} records as CSV file"
+                    )
+
+    # Combined download option
+    st.markdown("### 📦 Bulk Download")
+
+    col1, col2 = st.columns([3, 1])
 
     with col1:
-        st.markdown("**Export Type:** 🧠 LLM Query Performance Metrics")
-        st.caption("Response times, token usage, model performance, query history")
+        st.markdown("**Download All Available Metrics**")
+        st.caption("Combines all metrics files into a single ZIP archive for comprehensive analysis")
 
     with col2:
-        time_range = st.selectbox(
-            "Time Range:",
-            [1, 5, 10, 15],
-            format_func=lambda x: f"{x} minutes",
-            index=1
-        )
+        if st.button("📦 Download All", type="primary"):
+            # Create a ZIP file with all CSV data
+            import zipfile
 
-    with col3:
-        if st.button("📥 Export LLM Metrics", type="primary"):
-            with st.spinner("Generating LLM query CSV export..."):
-                result = ModernDashboard.export_csv("queries", time_range)
+            zip_buffer = io.BytesIO()
 
-                if "error" in result:
-                    st.error(f"❌ Export failed: {result['error']}")
-                else:
-                    st.success(f"✅ Export successful!")
-                    st.json(result)
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for file_key, file_path in available_files.items():
+                    df = ModernDashboard.load_csv_file(file_path)
+                    if not df.empty:
+                        csv_buffer = io.StringIO()
+                        df.to_csv(csv_buffer, index=False)
+                        csv_data = csv_buffer.getvalue()
+
+                        zip_file.writestr(f"{file_key}.csv", csv_data)
+
+            zip_data = zip_buffer.getvalue()
+
+            st.download_button(
+                label="📥 Download ZIP",
+                data=zip_data,
+                file_name=f"rag_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                mime="application/zip",
+                key="download_all_zip",
+                help="Download all metrics as ZIP file"
+            )
 
 def render_sidebar():
     """Render simplified sidebar with connection status and system info"""
