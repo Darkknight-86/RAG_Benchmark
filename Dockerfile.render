@@ -47,7 +47,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy all application source (matching our working docker-compose structure)
 COPY API_Gateway/src ./api_gateway_src
 COPY API_Gateway/protos ./protos
-COPY API_Gateway/Data ./API_Gateway_Data
+
+# Create Data directory structure (not tracked in Git due to .gitignore *.csv)
+RUN mkdir -p ./API_Gateway_Data/query_metrics ./API_Gateway_Data/streaming_metrics
 
 COPY embeddings/src ./embeddings_src
 COPY embeddings/src/Adapters ./llm_src/Adapters
