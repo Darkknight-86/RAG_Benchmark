@@ -22,8 +22,8 @@ WORKDIR /app
 COPY API_Gateway/pyproject.toml API_Gateway/poetry.lock* ./api_gateway/
 RUN cd api_gateway && poetry config virtualenvs.create false && poetry install --only main --no-root
 
-# Embeddings Service
-COPY Embeddings/pyproject.toml Embeddings/poetry.lock* ./embeddings/
+# Embeddings Service (using correct lowercase directory name)
+COPY embeddings/pyproject.toml embeddings/poetry.lock* ./embeddings/
 RUN cd embeddings && poetry config virtualenvs.create false && poetry install --only main --no-root
 
 # LLM Service
@@ -49,8 +49,8 @@ COPY API_Gateway/src ./api_gateway_src
 COPY API_Gateway/protos ./protos
 COPY API_Gateway/Data ./API_Gateway_Data
 
-COPY Embeddings/src ./embeddings_src
-COPY Embeddings/src/Adapters ./llm_src/Adapters
+COPY embeddings/src ./embeddings_src
+COPY embeddings/src/Adapters ./llm_src/Adapters
 
 COPY LLM/src ./llm_src
 
