@@ -1,91 +1,77 @@
 services:
-  api-gateway:
-    build:
-      context: .
-      dockerfile: API_Gateway/Dockerfile
-    container_name: api-gateway
-    ports:
-      - "8000:8000"   # REST
-      - "50051:50051" # gRPC
-    volumes:
-      - ./API_Gateway/exports:/app/API_Gateway/exports
-      - ./.env:/app/.env
-    depends_on:
-      - embeddings
-      - ingestion
-      - llm
-    networks: [rag-network]
-
+  # Embeddings Service - Financial data streaming and vector storage
   embeddings:
     build:
       context: .
-      dockerfile: embeddings/Dockerfile
+      dockerfile: Embeddings/Dockerfile
     container_name: embeddings
     ports:
-      - "50052:50052"
-      - "9090:9090"  # Prometheus metrics endpoint
+      - "50051:50051"  # gRPC service (corrected port)
     environment:
-      - POSTGRES_DB=rag_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      # ClickHouse hosted service connection
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
       - CLICKHOUSE_PORT=${CLICKHOUSE_PORT}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - CLICKHOUSE_SECURE=${CLICKHOUSE_SECURE:-true}
-    depends_on:
-      - postgres
-    networks: [rag-network]
-
-  postgres:
-    image: ankane/pgvector:latest
-    container_name: postgres
-    environment:
-      - POSTGRES_DB=rag_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5432:5432"
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-default}
+      # HuggingFace for embeddings
+      - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./.env:/app/.env
     networks: [rag-network]
 
-  ingestion:
-    build:
-      context: .
-      dockerfile: Ingestion/Dockerfile
-    container_name: ingestion
-    ports:
-      - "50053:50053"
-    networks: [rag-network]
-
+  # LLM Service - Llama 3.2 with HuggingFace integration
   llm:
     build:
       context: .
-      dockerfile: LLM/RAG/Dockerfile
+      dockerfile: LLM/Dockerfile
     container_name: llm
     ports:
-      - "50054:50054"
-    volumes:
-      - ./.env:/app/.env
+      - "50054:50054"  # gRPC service
     environment:
+      # Llama 3.2 models
       - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-meta-llama/Llama-3.2-1B-Instruct}
       - DEFAULT_TEMPERATURE=${DEFAULT_TEMPERATURE:-0.7}
       - DEFAULT_MAX_TOKENS=${DEFAULT_MAX_TOKENS:-1000}
       - DEFAULT_TOP_K=${DEFAULT_TOP_K:-5}
       - SUPPORTED_MODELS=${SUPPORTED_MODELS:-meta-llama/Llama-3.2-1B-Instruct,meta-llama/Llama-3.2-3B-Instruct}
       - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
+      # ClickHouse connection for LLM service
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_SECURE=${CLICKHOUSE_SECURE:-true}
+    volumes:
+      - ./.env:/app/.env
+      - huggingface_cache:/root/.cache/huggingface  # Cache for models
+    depends_on:
+      - embeddings
     networks: [rag-network]
 
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
+  # API Gateway - FastAPI + Enhanced Streamlit Dashboard
+  api-gateway:
+    build:
+      context: .
+      dockerfile: API_Gateway/Dockerfile
+    container_name: api-gateway
     ports:
-      - "9090:9090"
+      - "8000:8000"   # FastAPI server
+      - "8502:8502"   # Enhanced Streamlit Dashboard
+    environment:
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_SECURE=${CLICKHOUSE_SECURE:-true}
+      - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./API_Gateway/Data:/app/Data
+      - ./.env:/app/.env
+    depends_on:
+      - embeddings
+      - llm
     networks: [rag-network]
 
 networks:
@@ -93,4 +79,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  huggingface_cache:  # Shared cache for HuggingFace models

@@ -73,25 +73,52 @@ class ClickHouseAdapter(VectorStoreAdapter):
 
     def get_clickhouse_client(self):
         try:
-            host = os.getenv('CLICKHOUSE_HOST', 'localhost')
-            port = int(os.getenv('CLICKHOUSE_PORT', 8443))
-            username = os.getenv('CLICKHOUSE_USER', 'default')
-            password = os.getenv('CLICKHOUSE_PASSWORD', '')
-            secure = os.getenv('CLICKHOUSE_SECURE', 'true').lower() == 'true'
+            # Check if API key authentication is available (preferred method)
+            api_key = os.getenv('CLICKHOUSE_API_KEY')
+            api_secret = os.getenv('CLICKHOUSE_API_SECRET')
 
-            logger.info(f"Connecting to ClickHouse at {host}:{port} with user {username} (secure={secure})")
+            if api_key and api_secret:
+                # Use API key authentication (new method)
+                host = os.getenv('CLICKHOUSE_HOST', 'localhost')
+                port = int(os.getenv('CLICKHOUSE_PORT', 8443))
+                database = os.getenv('CLICKHOUSE_DATABASE', 'default')
+                secure = os.getenv('CLICKHOUSE_SECURE', 'true').lower() == 'true'
 
-            return clickhouse_connect.get_client(
-                host=host,
-                port=port,
-                username=username,
-                password=password,
-                database='default',
-                secure=secure,
-                connect_timeout=30,
-                send_receive_timeout=30,
-                compression=True
-            )
+                logger.info(f"Connecting to ClickHouse at {host}:{port} using API key authentication (secure={secure})")
+
+                return clickhouse_connect.get_client(
+                    host=host,
+                    port=port,
+                    username=api_key,  # API key is used as username
+                    password=api_secret,  # API secret is used as password
+                    database=database,
+                    secure=secure,
+                    connect_timeout=30,
+                    send_receive_timeout=30,
+                    compression=True
+                )
+            else:
+                # Fall back to username/password authentication (old method)
+                host = os.getenv('CLICKHOUSE_HOST', 'localhost')
+                port = int(os.getenv('CLICKHOUSE_PORT', 8443))
+                username = os.getenv('CLICKHOUSE_USER', 'default')
+                password = os.getenv('CLICKHOUSE_PASSWORD', '')
+                database = os.getenv('CLICKHOUSE_DATABASE', 'default')
+                secure = os.getenv('CLICKHOUSE_SECURE', 'true').lower() == 'true'
+
+                logger.info(f"Connecting to ClickHouse at {host}:{port} with user {username} (secure={secure})")
+
+                return clickhouse_connect.get_client(
+                    host=host,
+                    port=port,
+                    username=username,
+                    password=password,
+                    database=database,
+                    secure=secure,
+                    connect_timeout=30,
+                    send_receive_timeout=30,
+                    compression=True
+                )
         except Exception as e:
             logger.error(f"Failed to connect to ClickHouse: {str(e)}")
             raise

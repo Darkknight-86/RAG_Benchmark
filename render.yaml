@@ -1,18 +1,19 @@
 services:
-  # Main web service - Streamlit Dashboard (primary service)
+  # Single unified service - All microservices in one container (matches working Docker setup)
   - type: web
-    name: rag-dashboard
+    name: rag-benchmarking-platform
     env: docker
     dockerfilePath: ./Dockerfile.render
-    plan: starter
-    buildCommand: make -f Makefile.render install
-    startCommand: make -f Makefile.render start
+    plan: starter  # Can upgrade to standard for better performance
     healthCheckPath: /
     envVars:
+      # Render Configuration
       - key: PORT
         value: 8502
       - key: ENVIRONMENT
         value: production
+
+      # Streamlit Configuration (for dashboard)
       - key: STREAMLIT_SERVER_PORT
         value: 8502
       - key: STREAMLIT_SERVER_ADDRESS
@@ -21,22 +22,27 @@ services:
         value: true
       - key: STREAMLIT_SERVER_FILE_WATCHER_TYPE
         value: none
-      # Optional user credentials (can be set in Render dashboard)
+
+      # ClickHouse Database Configuration (user-configurable via dashboard)
+      # These can be left empty for demo mode or set in Render dashboard
       - key: CLICKHOUSE_HOST
-        value: ""
+        value: ""  # e.g., "your-instance.us-east-1.aws.clickhouse.cloud"
       - key: CLICKHOUSE_USER
-        value: default
+        value: "default"
       - key: CLICKHOUSE_PASSWORD
-        value: ""
+        value: ""  # Set this in Render dashboard for security
       - key: CLICKHOUSE_DATABASE
-        value: default
+        value: "default"
       - key: CLICKHOUSE_PORT
         value: 8443
       - key: CLICKHOUSE_SECURE
         value: true
+
+      # HuggingFace Configuration
       - key: HUGGINGFACE_HUB_TOKEN
-        value: ""
-      # LLM Configuration
+        value: ""  # Set this in Render dashboard for LLM features
+
+      # LLM Service Configuration
       - key: DEFAULT_LLM_MODEL
         value: meta-llama/Llama-3.2-1B-Instruct
       - key: DEFAULT_TEMPERATURE
@@ -48,85 +54,18 @@ services:
       - key: SUPPORTED_MODELS
         value: meta-llama/Llama-3.2-1B-Instruct,meta-llama/Llama-3.2-3B-Instruct
 
-  # API Gateway service
-  - type: web
-    name: rag-api-gateway
-    env: docker
-    dockerfilePath: ./API_Gateway/Dockerfile
-    plan: starter
-    buildCommand: cd API_Gateway && poetry install --only main --no-dev
-    startCommand: cd API_Gateway && PYTHONPATH=src poetry run uvicorn api_gateway.fastapi_server:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
-    envVars:
-      - key: PORT
-        value: 8000
-      - key: ENVIRONMENT
-        value: production
-      # Inherit same environment variables as dashboard
-      - key: CLICKHOUSE_HOST
-        sync: false
-      - key: CLICKHOUSE_USER
-        sync: false
-      - key: CLICKHOUSE_PASSWORD
-        sync: false
-      - key: CLICKHOUSE_DATABASE
-        sync: false
-      - key: CLICKHOUSE_PORT
-        sync: false
-      - key: CLICKHOUSE_SECURE
-        sync: false
-      - key: HUGGINGFACE_HUB_TOKEN
-        sync: false
-
-  # Background services (using worker type)
-  - type: worker
-    name: rag-embeddings
-    env: docker
-    dockerfilePath: ./Embeddings/Dockerfile
-    plan: starter
-    buildCommand: cd Embeddings && poetry install --only main --no-dev
-    startCommand: cd Embeddings && PYTHONPATH=src poetry run python src/main.py
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: GRPC_PORT
+      # Internal Service Ports (for inter-service communication)
+      - key: EMBEDDINGS_GRPC_PORT
         value: 50051
-      # Database configuration
-      - key: CLICKHOUSE_HOST
-        sync: false
-      - key: CLICKHOUSE_USER
-        sync: false
-      - key: CLICKHOUSE_PASSWORD
-        sync: false
-      - key: CLICKHOUSE_DATABASE
-        sync: false
-      - key: CLICKHOUSE_PORT
-        sync: false
-      - key: CLICKHOUSE_SECURE
-        sync: false
-
-  - type: worker
-    name: rag-llm
-    env: docker
-    dockerfilePath: ./LLM/Dockerfile
-    plan: starter
-    buildCommand: cd LLM && poetry install --only main --no-dev
-    startCommand: cd LLM && PYTHONPATH=src poetry run python src/main.py
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: GRPC_PORT
+      - key: LLM_GRPC_PORT
         value: 50054
-      # LLM configuration
-      - key: HUGGINGFACE_HUB_TOKEN
-        sync: false
-      - key: DEFAULT_LLM_MODEL
-        sync: false
-      - key: DEFAULT_TEMPERATURE
-        sync: false
-      - key: DEFAULT_MAX_TOKENS
-        sync: false
-      - key: DEFAULT_TOP_K
-        sync: false
-      - key: SUPPORTED_MODELS
-        sync: false
+      - key: API_GATEWAY_PORT
+        value: 8000
+
+      # Performance Optimization
+      - key: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - key: TRANSFORMERS_CACHE
+        value: /root/.cache/huggingface
+      - key: HF_HOME
+        value: /root/.cache/huggingface

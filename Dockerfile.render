@@ -1,49 +1,77 @@
 # Render Deployment Dockerfile - RAG Benchmarking Platform
 # Optimized for Render.com deployment with all microservices
+# Matches the working Docker setup exactly
 
-FROM python:3.11-slim
+FROM python:3.11-bookworm AS builder
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
+# Install system dependencies for building
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
     pkg-config \
-    make \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install poetry
+RUN curl -sSL https://install.python-poetry.org | python3 - && \
+    ln -s /root/.local/bin/poetry /usr/local/bin/poetry
 
-# Configure Poetry for production
-RUN poetry config virtualenvs.create false
-RUN poetry config installer.max-workers 10
+WORKDIR /app
 
-# Copy all source code
-COPY . .
-
-# Debug: List contents to verify copy
-RUN ls -la /app/
-RUN ls -la /app/API_Gateway/ || echo "API_Gateway not found"
-RUN ls -la /app/Embeddings/ || echo "Embeddings not found"
-RUN ls -la /app/LLM/ || echo "LLM not found"
-
-# Create necessary directories
-RUN mkdir -p /app/data
-RUN mkdir -p /app/API_Gateway/exports
-RUN mkdir -p /tmp
-
-# Install dependencies for all services
+# Copy pyproject.toml files and install dependencies for all services
 # API Gateway
-RUN cd API_Gateway && poetry install --only main
+COPY API_Gateway/pyproject.toml API_Gateway/poetry.lock* ./api_gateway/
+RUN cd api_gateway && poetry config virtualenvs.create false && poetry install --only main --no-root
 
 # Embeddings Service
-RUN cd Embeddings && poetry install --only main
+COPY Embeddings/pyproject.toml Embeddings/poetry.lock* ./embeddings/
+RUN cd embeddings && poetry config virtualenvs.create false && poetry install --only main --no-root
 
 # LLM Service
-RUN cd LLM && poetry install --only main
+COPY LLM/pyproject.toml LLM/poetry.lock* ./llm/
+RUN cd llm && poetry config virtualenvs.create false && poetry install --only main --no-root
+
+# Production stage
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy all application source (matching our working docker-compose structure)
+COPY API_Gateway/src ./api_gateway_src
+COPY API_Gateway/protos ./protos
+COPY API_Gateway/Data ./API_Gateway_Data
+
+COPY Embeddings/src ./embeddings_src
+COPY Embeddings/src/Adapters ./llm_src/Adapters
+
+COPY LLM/src ./llm_src
+
+# Copy warnings_suppression.py to all locations where it might be needed
+COPY warnings_suppression.py ./
+COPY warnings_suppression.py /warnings_suppression.py
+
+# Create necessary directories
+RUN mkdir -p ./API_Gateway_Data/query_metrics ./API_Gateway_Data/streaming_metrics
+RUN mkdir -p /root/.cache/huggingface
+
+# Generate gRPC stubs for all services
+RUN python -m grpc_tools.protoc -I./protos --python_out=./api_gateway_src --grpc_python_out=./api_gateway_src ./protos/rag_service.proto
+RUN mkdir -p ./embeddings_src/proto && python -m grpc_tools.protoc -I./protos --python_out=./embeddings_src/proto --grpc_python_out=./embeddings_src/proto ./protos/rag_service.proto
+RUN mkdir -p ./llm_src/proto && python -m grpc_tools.protoc -I./protos --python_out=./llm_src/proto --grpc_python_out=./llm_src/proto ./protos/rag_service.proto
+
+# Set environment variables to match our working setup
+ENV PYTHONPATH=/app
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+ENV TRANSFORMERS_CACHE=/root/.cache/huggingface
+ENV HF_HOME=/root/.cache/huggingface
 
 # Expose ports for all services
 EXPOSE 8502 8000 50051 50054
@@ -52,5 +80,42 @@ EXPOSE 8502 8000 50051 50054
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:8502 || exit 1
 
-# Use the Render-specific Makefile to start all services
-CMD ["make", "-f", "Makefile.render", "start"]
+# Create startup script that matches our working Docker setup
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "🚀 Starting RAG Benchmarking Platform on Render..."\n\
+\n\
+# Start Embeddings service in background\n\
+echo "  → Starting Embeddings service on port 50051..."\n\
+cd /app && PYTHONPATH=embeddings_src python embeddings_src/main.py &\n\
+sleep 5\n\
+\n\
+# Start streaming service in background\n\
+echo "  → Starting Streaming service..."\n\
+cd /app && PYTHONPATH=embeddings_src python embeddings_src/streaming.py &\n\
+sleep 3\n\
+\n\
+# Start LLM service in background\n\
+echo "  → Starting LLM service on port 50054..."\n\
+cd /app && PYTHONPATH=llm_src python llm_src/main.py &\n\
+sleep 5\n\
+\n\
+# Start API Gateway in background\n\
+echo "  → Starting API Gateway on port 8000..."\n\
+cd /app && PYTHONPATH=api_gateway_src uvicorn api_gateway.fastapi_server:app --host 0.0.0.0 --port 8000 &\n\
+sleep 3\n\
+\n\
+# Start Streamlit Dashboard (foreground - main process)\n\
+echo "  → Starting Enhanced Dashboard on port ${PORT:-8502}..."\n\
+echo "  → Dashboard will be available at your Render URL"\n\
+cd /app && PYTHONPATH=api_gateway_src streamlit run api_gateway_src/dashboard/enhanced_streamlit_dashboard.py \\\n\
+    --server.port ${PORT:-8502} \\\n\
+    --server.address 0.0.0.0 \\\n\
+    --server.headless true \\\n\
+    --server.fileWatcherType none \\\n\
+    --server.enableCORS false \\\n\
+    --server.enableXsrfProtection false\n\
+' > /app/start_render.sh && chmod +x /app/start_render.sh
+
+CMD ["/app/start_render.sh"]
