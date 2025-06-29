@@ -1,0 +1,11 @@
+timestamp,query_text,model_name,response_time_ms,tokens_used,vector_retrieval_ms,llm_inference_ms,relevance_score,user_rating
+2024-06-29T09:45:12Z,"What is Bitcoin's current price trend?",meta-llama/Llama-3.2-1B-Instruct,2340,87,156,2184,0.89,5
+2024-06-29T09:47:23Z,"How is Ethereum performing vs Bitcoin?",meta-llama/Llama-3.2-1B-Instruct,2890,124,203,2687,0.92,4
+2024-06-29T09:52:45Z,"Analyze AAPL stock performance",meta-llama/Llama-3.2-1B-Instruct,2150,76,134,2016,0.85,5
+2024-06-29T09:55:17Z,"What are the top crypto gainers today?",meta-llama/Llama-3.2-1B-Instruct,2675,98,178,2497,0.91,4
+2024-06-29T10:01:33Z,"Compare Tesla vs traditional automakers",meta-llama/Llama-3.2-1B-Instruct,3120,142,234,2886,0.88,5
+2024-06-29T10:05:44Z,"Explain DeFi yield farming risks",meta-llama/Llama-3.2-1B-Instruct,2780,115,189,2591,0.93,5
+2024-06-29T10:12:56Z,"Australian mining stocks outlook",meta-llama/Llama-3.2-1B-Instruct,2450,89,167,2283,0.87,4
+2024-06-29T10:18:12Z,"Impact of Fed rates on crypto",meta-llama/Llama-3.2-1B-Instruct,2950,128,212,2738,0.90,5
+2024-06-29T10:23:07Z,"Best renewable energy stocks",meta-llama/Llama-3.2-1B-Instruct,2580,94,145,2435,0.86,4
+2024-06-29T10:28:33Z,"Solana vs Ethereum transaction costs",meta-llama/Llama-3.2-1B-Instruct,2720,108,198,2522,0.92,5

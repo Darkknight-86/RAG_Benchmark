@@ -1,0 +1,11 @@
+timestamp,database_type,vectors_indexed,index_time_ms,query_latency_ms,memory_usage_mb,disk_usage_mb,connection_pool_size
+2024-06-29T10:00:00Z,clickhouse,45,156.7,23.4,128.5,450.2,5
+2024-06-29T10:00:30Z,clickhouse,52,178.9,25.1,132.1,465.8,5
+2024-06-29T10:01:00Z,clickhouse,38,134.2,21.8,125.3,442.1,5
+2024-06-29T10:01:30Z,clickhouse,49,167.5,24.6,130.7,458.9,5
+2024-06-29T10:02:00Z,clickhouse,41,145.8,22.9,127.2,448.5,5
+2024-06-29T10:02:30Z,clickhouse,55,189.3,26.3,134.8,472.6,5
+2024-06-29T10:03:00Z,clickhouse,43,152.1,23.8,129.1,453.7,5
+2024-06-29T10:03:30Z,clickhouse,47,162.4,24.2,131.5,461.3,5
+2024-06-29T10:04:00Z,clickhouse,50,173.6,25.7,133.2,467.9,5
+2024-06-29T10:04:30Z,clickhouse,39,138.9,22.1,126.8,445.4,5

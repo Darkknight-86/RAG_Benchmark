@@ -1,0 +1,11 @@
+timestamp,model_name,texts_processed,embedding_time_ms,vector_dimension,batch_size,tokens_processed,gpu_utilization
+2024-06-29T10:00:00Z,sentence-transformers/all-MiniLM-L6-v2,45,234.5,384,8,1250,0.0
+2024-06-29T10:00:30Z,sentence-transformers/all-MiniLM-L6-v2,52,267.8,384,8,1430,0.0
+2024-06-29T10:01:00Z,sentence-transformers/all-MiniLM-L6-v2,38,198.2,384,8,1050,0.0
+2024-06-29T10:01:30Z,sentence-transformers/all-MiniLM-L6-v2,49,245.1,384,8,1350,0.0
+2024-06-29T10:02:00Z,sentence-transformers/all-MiniLM-L6-v2,41,215.7,384,8,1150,0.0
+2024-06-29T10:02:30Z,sentence-transformers/all-MiniLM-L6-v2,55,289.3,384,8,1520,0.0
+2024-06-29T10:03:00Z,sentence-transformers/all-MiniLM-L6-v2,43,226.4,384,8,1200,0.0
+2024-06-29T10:03:30Z,sentence-transformers/all-MiniLM-L6-v2,47,251.9,384,8,1300,0.0
+2024-06-29T10:04:00Z,sentence-transformers/all-MiniLM-L6-v2,50,263.2,384,8,1380,0.0
+2024-06-29T10:04:30Z,sentence-transformers/all-MiniLM-L6-v2,39,205.8,384,8,1080,0.0

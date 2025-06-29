@@ -1,0 +1,11 @@
+timestamp,data_source,records_processed,throughput_rps,latency_ms,error_rate,data_size_mb,processing_time_ms
+2024-06-29T10:00:00Z,yahoo_finance,1250,12.5,45.2,0.02,2.3,89.1
+2024-06-29T10:00:30Z,yahoo_finance,1180,11.8,48.7,0.01,2.1,92.4
+2024-06-29T10:01:00Z,yahoo_finance,1320,13.2,42.1,0.03,2.5,85.6
+2024-06-29T10:01:30Z,yahoo_finance,1290,12.9,46.8,0.02,2.4,88.3
+2024-06-29T10:02:00Z,yahoo_finance,1150,11.5,51.3,0.01,2.0,95.7
+2024-06-29T10:02:30Z,yahoo_finance,1380,13.8,41.9,0.02,2.6,84.2
+2024-06-29T10:03:00Z,yahoo_finance,1220,12.2,47.5,0.03,2.2,90.8
+2024-06-29T10:03:30Z,yahoo_finance,1340,13.4,43.6,0.01,2.5,86.9
+2024-06-29T10:04:00Z,yahoo_finance,1270,12.7,49.1,0.02,2.3,91.5
+2024-06-29T10:04:30Z,yahoo_finance,1190,11.9,50.8,0.01,2.1,94.2
