@@ -7,7 +7,7 @@
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://rag-benchmarking-platform.onrender.com)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com)
 
-A production-ready benchmarking platform designed to measure, analyze, and optimize RAG pipeline performance across all components. Built with **3 microservices**, real-time metrics collection, live financial data streaming, and comprehensive analytics.
+A production-ready benchmarking platform designed to measure, analyze, and optimize RAG pipeline performance across all components. Built with **3 microservices**, **gRPC communication**, **vector databases**, and **LLM integration** using modern Python ecosystem.
 
 ## 🎯 **Live Demo**
 
@@ -82,11 +82,24 @@ flowchart TB
 
 | Service | Port | Technology Stack | Purpose |
 |---------|------|------------------|---------|
-| **🌐 API Gateway** | 8000, 8502 | FastAPI + Streamlit | Central entry point, dashboard, metrics aggregation |
-| **📊 Embeddings** | 50051 | gRPC + sentence-transformers | Vector generation, live data streaming, ClickHouse integration |
-| **🤖 LLM Service** | 50054 | gRPC + Llama 3.2 + HuggingFace | Query processing, RAG pipeline, Apple Silicon GPU |
+| **🌐 API Gateway** | 8000, 8502 | FastAPI + Streamlit + Poetry | Central entry point, dashboard, metrics aggregation |
+| **📊 Embeddings** | 50051 | gRPC + LangChain + sentence-transformers + ClickHouse | Vector generation, live data streaming, database integration |
+| **🤖 LLM Service** | 50054 | gRPC + HuggingFace + Transformers + PyTorch | Query processing, RAG pipeline, Apple Silicon GPU |
 
 **Plus:** ClickHouse Cloud (external vector database)
+
+### **🛠️ Complete Technology Stack**
+
+| Category | Technologies | Purpose |
+|----------|-------------|---------|
+| **🌐 Web Framework** | FastAPI, Streamlit, Uvicorn | REST APIs, dashboard, ASGI server |
+| **🔗 Communication** | gRPC, Protocol Buffers | High-performance microservice communication |
+| **🤖 AI/ML** | HuggingFace Transformers, PyTorch, sentence-transformers | LLM inference, embeddings, GPU acceleration |
+| **📊 Data Processing** | LangChain, Pandas, NumPy | RAG pipeline, data manipulation, analytics |
+| **🗄️ Databases** | ClickHouse Cloud, Vector Storage | High-performance vector database, real-time analytics |
+| **🐳 DevOps** | Docker, docker-compose, Poetry | Containerization, dependency management |
+| **📈 Monitoring** | Custom metrics, Health checks, CSV exports | Performance monitoring, observability |
+| **⚡ Performance** | Apple Silicon MPS, Async/await, Batch processing | GPU acceleration, concurrency, optimization |
 
 ---
 
@@ -95,8 +108,8 @@ flowchart TB
 ### **🔥 Production-Ready Capabilities**
 - **🎯 Real-time Financial RAG**: Live Yahoo Finance data → ClickHouse → Llama 3.2 responses
 - **📊 Comprehensive Metrics**: 5 types of performance data with 30-second auto-export
-- **🚀 Apple Silicon Optimized**: Native MPS GPU acceleration for 10x faster inference
-- **🔄 Live Data Streaming**: Continuous financial data ingestion and processing
+- **🚀 Apple Silicon Optimized**: Native MPS GPU acceleration with PyTorch for 10x faster inference
+- **🔄 Live Data Streaming**: Continuous financial data ingestion using LangChain and gRPC
 - **📥 Professional Dashboard**: Streamlit interface with CSV downloads and real-time updates
 
 ### **📈 Advanced Analytics**
@@ -107,11 +120,11 @@ flowchart TB
 - **🤖 LLM Query Metrics**: End-to-end RAG performance with token usage and response quality
 
 ### **🛠️ Developer Experience**
-- **🐳 Docker Ready**: Complete containerization with docker-compose
-- **📦 Poetry Management**: Dependency management across all services
+- **🐳 Docker Ready**: Complete containerization with multi-stage builds and docker-compose
+- **📦 Poetry Management**: Modern Python dependency management across all services
 - **🔧 Make Commands**: Simple `make start`, `make stop`, `make test` workflows
-- **📋 Health Checks**: Comprehensive service monitoring and status reporting
-- **🔗 API Documentation**: Auto-generated FastAPI docs with interactive testing
+- **📋 Health Checks**: Comprehensive gRPC and HTTP service monitoring
+- **🔗 API Documentation**: Auto-generated FastAPI docs with Swagger UI and interactive testing
 
 ---
 

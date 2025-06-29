@@ -227,11 +227,11 @@ docker build -f LLM/Dockerfile -t rag-llm .
 ## 🎯 **Portfolio & Job Application Value**
 
 ### **📝 Resume Talking Points**
-- "Deployed 12,000+ line RAG system with 3 microservices on Render"
-- "Built real-time financial data processing with ClickHouse vector DB"
-- "Optimized for Apple Silicon GPU achieving 10x performance improvement"
-- "Created professional dashboard with CSV export functionality"
-- "Implemented gRPC communication between microservices"
+- "Deployed 12,000+ line RAG system with 3 microservices using FastAPI, gRPC, and Docker on Render"
+- "Built real-time financial data processing with LangChain, ClickHouse vector DB, and HuggingFace"
+- "Optimized for Apple Silicon GPU with PyTorch MPS achieving 10x performance improvement"
+- "Created professional Streamlit dashboard with CSV export functionality and performance analytics"
+- "Implemented high-performance gRPC communication with Protocol Buffers between microservices"
 
 ### **🗣️ Interview Demonstrations**
 1. **Show Live Demo** - Professional working system
@@ -241,12 +241,12 @@ docker build -f LLM/Dockerfile -t rag-llm .
 5. **Highlight Deployment** - Cloud deployment expertise
 
 ### **💼 Technical Skills Demonstrated**
-- **Backend Development:** FastAPI, gRPC, microservices
-- **Frontend Development:** Streamlit, modern UI/UX
-- **Database Engineering:** ClickHouse, vector databases
-- **AI/ML Integration:** HuggingFace, LLM deployment
-- **DevOps & Deployment:** Docker, Render, CI/CD
-- **Performance Optimization:** GPU acceleration, caching
+- **Backend Development:** FastAPI, gRPC, microservices, Protocol Buffers, Poetry
+- **Frontend Development:** Streamlit, modern UI/UX, responsive design
+- **Database Engineering:** ClickHouse vector DB, real-time analytics, SQL optimization
+- **AI/ML Integration:** HuggingFace Transformers, PyTorch, LangChain RAG pipeline
+- **DevOps & Deployment:** Docker multi-stage builds, Render cloud deployment, CI/CD
+- **Performance Optimization:** Apple Silicon GPU (MPS), async/await, batch processing
 
 ---
 

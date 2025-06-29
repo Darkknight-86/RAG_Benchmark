@@ -43,11 +43,11 @@
 ## 🏗️ **Technical Architecture**
 
 ### **🎯 Microservices Breakdown**
-| Service | Technology | Purpose | Local Port |
-|---------|------------|---------|------------|
-| **🌐 API Gateway** | FastAPI + Streamlit | Central entry, dashboard, metrics | 8000, 8502 |
-| **📊 Embeddings** | gRPC + sentence-transformers | Vector generation, live streaming | 50051 |
-| **🤖 LLM Service** | gRPC + Llama 3.2 + HuggingFace | Query processing, RAG pipeline | 50054 |
+| Service | Technology Stack | Purpose | Local Port |
+|---------|------------------|---------|------------|
+| **🌐 API Gateway** | FastAPI + Streamlit + Poetry | Central entry, dashboard, metrics | 8000, 8502 |
+| **📊 Embeddings** | gRPC + LangChain + sentence-transformers + ClickHouse | Vector generation, live streaming, database | 50051 |
+| **🤖 LLM Service** | gRPC + HuggingFace + PyTorch + Transformers | Query processing, RAG pipeline, GPU | 50054 |
 
 ### **📈 Performance Metrics System**
 | Metric Type | File | Purpose |
@@ -245,11 +245,11 @@ docker run -p 8502:10000 -e DEMO_MODE=true rag-demo
 ## 🎯 **Next Steps for Job Applications**
 
 ### **📝 Resume Points**
-- "Built 12,000+ line RAG system with 3 microservices"
-- "Deployed production system on Render with Docker"
-- "Implemented real-time financial data processing"
-- "Created professional dashboard with CSV exports"
-- "Optimized for Apple Silicon GPU (10x performance)"
+- "Built 12,000+ line RAG system with 3 microservices using FastAPI, gRPC, and Docker"
+- "Deployed production system on Render with multi-stage Docker builds and Poetry"
+- "Implemented real-time financial data processing with LangChain and ClickHouse vector DB"
+- "Created professional Streamlit dashboard with CSV exports and performance analytics"
+- "Optimized for Apple Silicon GPU with PyTorch MPS achieving 10x performance improvement"
 
 ### **🗣️ Interview Talking Points**
 - **System Design:** Microservices architecture decisions

@@ -636,12 +636,13 @@ def render_header():
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 15px; margin-bottom: 2rem; text-align: center; color: white; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
             <h1 style="margin: 0; font-size: 2.5rem;">🚀 RAG Benchmarking Platform</h1>
             <h2 style="margin: 0.5rem 0; font-size: 1.5rem; opacity: 0.9;">✨ LIVE DEMO - Sample Data Showcase</h2>
-            <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0;">
-                <p style="font-size: 1.2rem; margin: 0.5rem 0;"><strong>🎯 12,000+ Line Production System</strong></p>
-                <p style="font-size: 1.1rem; margin: 0.5rem 0;">📊 <strong>3 Microservices:</strong> API Gateway + Embeddings + LLM Service</p>
-                <p style="font-size: 1.1rem; margin: 0.5rem 0;">⚡ <strong>Tech Stack:</strong> FastAPI • ClickHouse • Llama 3.2 • Apple Silicon GPU</p>
-                <p style="font-size: 1.1rem; margin: 0.5rem 0;">🔄 <strong>Live Features:</strong> Real-time Financial Data • Vector RAG • Performance Analytics</p>
-            </div>
+                         <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0;">
+                 <p style="font-size: 1.2rem; margin: 0.5rem 0;"><strong>🎯 12,000+ Line Enterprise RAG System</strong></p>
+                 <p style="font-size: 1.1rem; margin: 0.5rem 0;">🏗️ <strong>Architecture:</strong> 3 Microservices • gRPC Communication • Protocol Buffers</p>
+                 <p style="font-size: 1.1rem; margin: 0.5rem 0;">🤖 <strong>AI/ML Stack:</strong> HuggingFace Transformers • PyTorch MPS • LangChain RAG</p>
+                 <p style="font-size: 1.1rem; margin: 0.5rem 0;">⚡ <strong>Performance:</strong> Async Streaming • Vector DB • Apple Silicon GPU (10x faster)</p>
+                 <p style="font-size: 1.1rem; margin: 0.5rem 0;">🛠️ <strong>DevOps:</strong> FastAPI • Docker Multi-stage • Poetry • ClickHouse Cloud</p>
+             </div>
             <div style="margin-top: 1.5rem;">
                 <a href="https://github.com/Darkknight-86/RAG_Benchmark" target="_blank" style="background: #28a745; color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 1.1rem; margin: 0 10px; display: inline-block;">
                     📂 Fork Repository
@@ -1113,18 +1114,19 @@ def main():
 
     render_export_section()
 
-    # Streaming data note
+    # Technical architecture note
     st.markdown("""
     <div style="background: #e8f4fd; padding: 1.5rem; border-radius: 10px; border-left: 4px solid #2196F3; margin-top: 2rem;">
-        <h3>📊 Automated Pipeline Metrics</h3>
-        <p>✅ <strong>Component CSV Exports:</strong> RAG pipeline metrics are automatically exported every 30 seconds:</p>
+        <h3>🏗️ Advanced Technical Architecture</h3>
+        <p>✅ <strong>Real-time Pipeline:</strong> Async streaming with live financial data processing:</p>
         <ul>
-            <li>📡 <code>streaming_data_metrics.csv</code> - Data ingestion, throughput, latency</li>
-            <li>✂️ <code>chunking_metrics.csv</code> - Text chunking performance, chunk sizes</li>
-            <li>🧠 <code>embedding_metrics.csv</code> - Embedding generation, model performance</li>
-            <li>🗄️ <code>vector_db_metrics.csv</code> - VD indexing/reindexing, database performance</li>
+            <li>📡 <strong>Async Data Streaming:</strong> Yahoo Finance → gRPC → ClickHouse (sub-second latency)</li>
+            <li>🤖 <strong>Transformers Pipeline:</strong> HuggingFace sentence-transformers → PyTorch MPS GPU</li>
+            <li>🧠 <strong>LLM Integration:</strong> Llama 3.2 with LangChain RAG → 10x Apple Silicon acceleration</li>
+            <li>🗄️ <strong>Vector Database:</strong> ClickHouse Cloud with real-time indexing and reindexing detection</li>
+            <li>⚡ <strong>Performance Monitoring:</strong> 30-second CSV exports with comprehensive metrics</li>
         </ul>
-        <p>🎯 <strong>This dashboard:</strong> Manual query testing • Deep-dive analysis</p>
+        <p>🎯 <strong>Production Features:</strong> gRPC microservices • Protocol Buffers • Docker multi-stage builds • Poetry dependency management</p>
     </div>
     """, unsafe_allow_html=True)
 
