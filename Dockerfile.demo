@@ -1,0 +1,37 @@
+# Demo Dockerfile - RAG Benchmarking Platform
+# Lightweight version for Render.com free tier (512MB)
+# Shows dashboard with sample data - full system available via repo fork
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install minimal dependencies for Streamlit only
+RUN pip install --no-cache-dir \
+    streamlit==1.28.0 \
+    pandas==2.1.0 \
+    requests==2.31.0
+
+# Copy only the dashboard and sample data
+COPY API_Gateway/src/dashboard/enhanced_streamlit_dashboard.py ./dashboard.py
+COPY sample_data/ ./sample_data/
+
+# Create demo environment
+ENV DEMO_MODE=true
+ENV PORT=10000
+
+# Expose port for Render
+EXPOSE 10000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT} || exit 1
+
+# Start Streamlit dashboard in demo mode
+CMD streamlit run dashboard.py \
+    --server.port ${PORT} \
+    --server.address 0.0.0.0 \
+    --server.headless true \
+    --server.fileWatcherType none \
+    --server.enableCORS false \
+    --server.enableXsrfProtection false

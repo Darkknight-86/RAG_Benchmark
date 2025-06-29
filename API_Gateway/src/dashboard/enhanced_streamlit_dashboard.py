@@ -14,6 +14,9 @@ import pandas as pd
 import os
 import io
 
+# Demo mode detection
+DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -522,10 +525,15 @@ class ModernDashboard:
     @staticmethod
     def get_available_metrics_files() -> Dict[str, str]:
         """Get available metrics CSV files"""
-        # For Docker/Render deployment, files are in /app/API_Gateway_Data/
-        # For local development, files are in API_Gateway/Data/
-        base_paths = [
-            "/app/API_Gateway_Data",  # Docker/Render path
+        if DEMO_MODE:
+            # Demo mode uses sample data
+            base_paths = ["sample_data"]
+        else:
+            # Production mode paths
+            # For Docker/Render deployment, files are in /app/API_Gateway_Data/
+            # For local development, files are in API_Gateway/Data/
+            base_paths = [
+                "/app/API_Gateway_Data",  # Docker/Render path
             "API_Gateway/Data",       # Local development path
             "../API_Gateway/Data",    # Alternative local path
             "../../API_Gateway/Data"  # Alternative path from embeddings service
@@ -623,6 +631,16 @@ class ModernDashboard:
 
 def render_header():
     """Render the main header section"""
+    if DEMO_MODE:
+        st.markdown("""
+        <div style="background: linear-gradient(90deg, #ff6b6b, #ffa726); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; text-align: center; color: white;">
+            <h2>🎯 RAG Benchmarking Platform - DEMO MODE</h2>
+            <p><strong>📊 Viewing Sample Data</strong> • Fork this repo to run the full 12k+ line system locally!</p>
+            <p>🚀 <strong>Full System:</strong> Live Financial Data • ClickHouse Vector DB • Llama 3.2 LLM • 4 Microservices</p>
+            <p>📂 <strong>GitHub:</strong> <a href="https://github.com/Darkknight-86/RAG_Benchmark" style="color: white; text-decoration: underline;">Fork & Run Locally</a></p>
+        </div>
+        """, unsafe_allow_html=True)
+
     st.markdown("""
     <div class="main-header">
         <h1>🚀 RAG System Enterprise Dashboard</h1>
@@ -694,10 +712,21 @@ def render_llm_query_interface():
     col_query, col_clear = st.columns([3, 1])
 
     with col_query:
-        if st.button("🚀 Execute Query", type="primary", disabled=not query_text.strip()):
-            with st.spinner("🔍 Processing your query through the RAG pipeline..."):
-                ticker = selected_ticker if selected_ticker != "General Query" else None
-                result = ModernDashboard.test_llm_query(query_text, ticker, selected_model, temperature)
+        if DEMO_MODE:
+            if st.button("🚀 Execute Query", type="primary", disabled=not query_text.strip()):
+                st.info("🎯 **Demo Mode**: This is a preview of the dashboard interface. Fork the repository to run live queries with the full RAG pipeline!")
+                st.markdown("""
+                **📊 In the full system, this would:**
+                - 🔍 Search through live financial data in ClickHouse
+                - 🧠 Process your query with Llama 3.2 LLM
+                - 📈 Return intelligent financial analysis
+                - ⚡ Show real-time performance metrics
+                """)
+        else:
+            if st.button("🚀 Execute Query", type="primary", disabled=not query_text.strip()):
+                with st.spinner("🔍 Processing your query through the RAG pipeline..."):
+                    ticker = selected_ticker if selected_ticker != "General Query" else None
+                    result = ModernDashboard.test_llm_query(query_text, ticker, selected_model, temperature)
 
                 if "error" in result:
                     st.error(f"❌ Query failed: {result['error']}")

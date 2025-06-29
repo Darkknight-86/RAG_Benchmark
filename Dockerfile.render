@@ -64,10 +64,18 @@ COPY warnings_suppression.py /warnings_suppression.py
 RUN mkdir -p ./API_Gateway_Data/query_metrics ./API_Gateway_Data/streaming_metrics
 RUN mkdir -p /root/.cache/huggingface
 
-# Generate gRPC stubs for all services
-RUN python -m grpc_tools.protoc -I./protos --python_out=./api_gateway_src --grpc_python_out=./api_gateway_src ./protos/rag_service.proto
-RUN mkdir -p ./embeddings_src/proto && python -m grpc_tools.protoc -I./protos --python_out=./embeddings_src/proto --grpc_python_out=./embeddings_src/proto ./protos/rag_service.proto
-RUN mkdir -p ./llm_src/proto && python -m grpc_tools.protoc -I./protos --python_out=./llm_src/proto --grpc_python_out=./llm_src/proto ./protos/rag_service.proto
+# Generate gRPC stubs for all services (matching working Docker structure)
+# API Gateway - generate in api_gateway/proto directory
+RUN mkdir -p ./api_gateway_src/api_gateway/proto && \
+    python -m grpc_tools.protoc -I./protos --python_out=./api_gateway_src/api_gateway/proto --grpc_python_out=./api_gateway_src/api_gateway/proto ./protos/rag_service.proto
+
+# Embeddings - generate in proto directory
+RUN mkdir -p ./embeddings_src/proto && \
+    python -m grpc_tools.protoc -I./protos --python_out=./embeddings_src/proto --grpc_python_out=./embeddings_src/proto ./protos/rag_service.proto
+
+# LLM - generate in proto directory
+RUN mkdir -p ./llm_src/proto && \
+    python -m grpc_tools.protoc -I./protos --python_out=./llm_src/proto --grpc_python_out=./llm_src/proto ./protos/rag_service.proto
 
 # Set environment variables to match our working setup
 ENV PYTHONPATH=/app
